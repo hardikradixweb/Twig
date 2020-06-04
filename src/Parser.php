@@ -338,9 +338,11 @@ class Parser
         // "block" tags that are not captured (see above) are only used for defining
         // the content of the block. In such a case, nesting it does not work as
         // expected as the definition is not part of the default template code flow.
-        if ($nested && $node instanceof BlockReferenceNode) {
-            throw new SyntaxError('A block definition cannot be nested under non-capturing nodes.', $node->getTemplateLine(), $this->stream->getSourceContext());
-        }
+	
+	/* Radix: commented below code to prevent from throwing an exception for not allowing to define block inside if condition */
+        /*if ($nested && $node instanceof BlockReferenceNode) {
+             throw new SyntaxError('A block definition cannot be nested under non-capturing nodes.', $node->getTemplateLine(), $this->stream->getSourceContext());
+         }*/
 
         if ($node instanceof NodeOutputInterface) {
             return null;
