@@ -249,6 +249,8 @@ abstract class Template
     }
 
     /**
+     * @param string|TemplateWrapper|array<string|TemplateWrapper> $template
+     *
      * @return self|TemplateWrapper
      */
     protected function loadTemplate($template, $templateName = null, $line = null, $index = null)
@@ -258,7 +260,13 @@ abstract class Template
                 return $this->env->resolveTemplate($template);
             }
 
-            if ($template instanceof self || $template instanceof TemplateWrapper) {
+            if ($template instanceof TemplateWrapper) {
+                return $template;
+            }
+
+            if ($template instanceof self) {
+                trigger_deprecation('twig/twig', '3.9', 'Passing a "%s" instance to "%s" is deprecated.', self::class, __METHOD__);
+
                 return $template;
             }
 
@@ -342,6 +350,7 @@ abstract class Template
         try {
             if ($this->useYield) {
                 yield from $this->doDisplay($context, $blocks);
+
                 return;
             }
 
@@ -373,7 +382,7 @@ abstract class Template
 
             throw $e;
         } catch (\Throwable $e) {
-            $e = new RuntimeError(sprintf('An exception has been thrown during the rendering of a template ("%s").', $e->getMessage()), -1, $this->getSourceContext(), $e);
+            $e = new RuntimeError(\sprintf('An exception has been thrown during the rendering of a template ("%s").', $e->getMessage()), -1, $this->getSourceContext(), $e);
             $e->guess();
 
             throw $e;
@@ -411,6 +420,7 @@ abstract class Template
             try {
                 if ($this->useYield) {
                     yield from $template->$block($context, $blocks);
+
                     return;
                 }
 
@@ -442,7 +452,7 @@ abstract class Template
 
                 throw $e;
             } catch (\Throwable $e) {
-                $e = new RuntimeError(sprintf('An exception has been thrown during the rendering of a template ("%s").', $e->getMessage()), -1, $template->getSourceContext(), $e);
+                $e = new RuntimeError(\sprintf('An exception has been thrown during the rendering of a template ("%s").', $e->getMessage()), -1, $template->getSourceContext(), $e);
                 $e->guess();
 
                 throw $e;
@@ -454,11 +464,11 @@ abstract class Template
                 }
             }
         } elseif ($parent = $this->getParent($context)) {
-            yield from $parent->yieldBlock($name, $context, array_merge($this->blocks, $blocks), false, $templateContext ?? $this);
+            yield from $parent->unwrap()->yieldBlock($name, $context, array_merge($this->blocks, $blocks), false, $templateContext ?? $this);
         } elseif (isset($blocks[$name])) {
-            throw new RuntimeError(sprintf('Block "%s" should not call parent() in "%s" as the block does not exist in the parent template "%s".', $name, $blocks[$name][0]->getTemplateName(), $this->getTemplateName()), -1, $blocks[$name][0]->getSourceContext());
+            throw new RuntimeError(\sprintf('Block "%s" should not call parent() in "%s" as the block does not exist in the parent template "%s".', $name, $blocks[$name][0]->getTemplateName(), $this->getTemplateName()), -1, $blocks[$name][0]->getSourceContext());
         } else {
-            throw new RuntimeError(sprintf('Block "%s" on template "%s" does not exist.', $name, $this->getTemplateName()), -1, ($templateContext ?? $this)->getSourceContext());
+            throw new RuntimeError(\sprintf('Block "%s" on template "%s" does not exist.', $name, $this->getTemplateName()), -1, ($templateContext ?? $this)->getSourceContext());
         }
     }
 
@@ -481,7 +491,7 @@ abstract class Template
         } elseif ($parent = $this->getParent($context)) {
             yield from $parent->unwrap()->yieldBlock($name, $context, $blocks, false);
         } else {
-            throw new RuntimeError(sprintf('The template has no parent and no traits defining the "%s" block.', $name), -1, $this->getSourceContext());
+            throw new RuntimeError(\sprintf('The template has no parent and no traits defining the "%s" block.', $name), -1, $this->getSourceContext());
         }
     }
 

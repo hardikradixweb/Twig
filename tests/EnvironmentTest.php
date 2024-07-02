@@ -271,8 +271,8 @@ class EnvironmentTest extends TestCase
     {
         $twig = new Environment($this->createMock(LoaderInterface::class));
         $twig->addExtension($ext = new EnvironmentTest_Extension());
-        $this->assertSame($ext, $twig->getExtension('Twig\Tests\EnvironmentTest_Extension'));
-        $this->assertSame($ext, $twig->getExtension('\Twig\Tests\EnvironmentTest_Extension'));
+        $this->assertSame($ext, $twig->getExtension(EnvironmentTest_Extension::class));
+        $this->assertSame($ext, $twig->getExtension(EnvironmentTest_Extension::class));
     }
 
     public function testAddExtension()
@@ -334,7 +334,7 @@ class EnvironmentTest extends TestCase
             'func_string_named_args' => '{{ from_runtime_string(name="foo") }}',
         ]);
 
-        $twig = new Environment($loader);
+        $twig = new Environment($loader, ['autoescape' => false]);
         $twig->addExtension(new EnvironmentTest_ExtensionWithoutRuntime());
         $twig->addRuntimeLoader($runtimeLoader);
 
@@ -414,7 +414,7 @@ class EnvironmentTest extends TestCase
      */
     public function testLegacyEchoingNode()
     {
-        $loader = new ArrayLoader(['echo_bar' => 'A{% set v %}B{% test %}C{% endset %}D{% test %}E{{ v }}F']);
+        $loader = new ArrayLoader(['echo_bar' => 'A{% set v %}B{% test %}C{% endset %}D{% test %}E{{ v }}F{% set w %}{% test %}{% endset %}G{{ w }}H']);
 
         $twig = new Environment($loader);
         $twig->addExtension(new EnvironmentTest_Extension());
@@ -430,7 +430,7 @@ EOF
             );
         }
 
-        $this->assertSame('ADbarEBbarCF', $twig->render('echo_bar'));
+        $this->assertSame('ADbarEBbarCFGbarH', $twig->render('echo_bar'));
     }
 
     protected function getMockLoader($templateName, $templateContent)

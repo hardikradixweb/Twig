@@ -1,10 +1,16 @@
 Coding Standards
 ================
 
+.. note::
+
+    The `Twig CS fixer tool <https://github.com/VincentLanglet/Twig-CS-Fixer>`_
+    uses the coding standards described in this document to automatically fix
+    your templates.
+
 When writing Twig templates, we recommend you to follow these official coding
 standards:
 
-* Put one (and only one) space after the start of a delimiter (``{{``, ``{%``,
+* Put exactly one space after the start of a delimiter (``{{``, ``{%``,
   and ``{#``) and before the end of a delimiter (``}}``, ``%}``, and ``#}``):
 
   .. code-block:: twig
@@ -22,7 +28,7 @@ standards:
     {#- comment -#}
     {%- if foo -%}{%- endif -%}
 
-* Put one (and only one) space before and after the following operators:
+* Put exactly one space before and after the following operators:
   comparison operators (``==``, ``!=``, ``<``, ``>``, ``>=``, ``<=``), math
   operators (``+``, ``-``, ``/``, ``*``, ``%``, ``//``, ``**``), logic
   operators (``not``, ``and``, ``or``), ``~``, ``is``, ``in``, and the ternary
@@ -34,8 +40,8 @@ standards:
      {{ foo ~ bar }}
      {{ true ? true : false }}
 
-* Put one (and only one) space after the ``:`` sign in hashes and ``,`` in
-  arrays and hashes:
+* Put exactly one space after the ``:`` sign in mappings and ``,`` in sequences
+  and mappings:
 
   .. code-block:: twig
 
@@ -74,8 +80,8 @@ standards:
      {{ foo|default('foo') }}
      {{ range(1..10) }}
 
-* Do not put any spaces before and after the opening and the closing of arrays
-  and hashes:
+* Do not put any spaces before and after the opening and the closing of
+  sequences and mappings:
 
   .. code-block:: twig
 
