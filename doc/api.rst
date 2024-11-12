@@ -398,14 +398,14 @@ The escaping rules are implemented as follows:
 
   .. code-block:: html+twig
 
-        {{ foo ? "Twig<br/>" : "<br/>Twig" }} {# won't be escaped #}
+        {{ any_value ? "Twig<br/>" : "<br/>Twig" }} {# won't be escaped #}
 
         {% set text = "Twig<br/>" %}
         {{ true ? text : "<br/>Twig" }} {# will be escaped #}
         {{ false ? text : "<br/>Twig" }} {# won't be escaped #}
 
         {% set text = "Twig<br/>" %}
-        {{ foo ? text|raw : "<br/>Twig" }} {# won't be escaped #}
+        {{ any_value ? text|raw : "<br/>Twig" }} {# won't be escaped #}
 
 * Objects with a ``__toString`` method are converted to strings and
   escaped. You can mark some classes and/or interfaces as being safe for some
@@ -413,17 +413,17 @@ The escaping rules are implemented as follows:
 
   .. code-block:: twig
 
-        // mark object of class Foo as safe for the HTML strategy
-        $escaper->addSafeClass('Foo', ['html']);
+        // mark objects of class "HtmlGenerator" as safe for the HTML strategy
+        $escaper->addSafeClass('HtmlGenerator', ['html']);
 
-        // mark object of interface Foo as safe for the HTML strategy
-        $escaper->addSafeClass('FooInterface', ['html']);
+        // mark objects of interface "HtmlGeneratorInterface" as safe for the HTML strategy
+        $escaper->addSafeClass('HtmlGeneratorInterface', ['html']);
 
-        // mark object of class Foo as safe for the HTML and JS strategies
-        $escaper->addSafeClass('Foo', ['html', 'js']);
+        // mark objects of class "HtmlGenerator" as safe for the HTML and JS strategies
+        $escaper->addSafeClass('HtmlGenerator', ['html', 'js']);
 
-        // mark object of class Foo as safe for all strategies
-        $escaper->addSafeClass('Foo', ['all']);
+        // mark objects of class "HtmlGenerator" as safe for all strategies
+        $escaper->addSafeClass('HtmlGenerator', ['all']);
 
 * Escaping is applied before printing, after any other filter is applied:
 
@@ -431,7 +431,7 @@ The escaping rules are implemented as follows:
 
         {{ var|upper }} {# is equivalent to {{ var|upper|escape }} #}
 
-* The `raw` filter should only be used at the end of the filter chain:
+* The ``raw`` filter should only be used at the end of the filter chain:
 
   .. code-block:: twig
 
@@ -456,54 +456,15 @@ The escaping rules are implemented as follows:
 
     Note that autoescaping has some limitations as escaping is applied on
     expressions after evaluation. For instance, when working with
-    concatenation, ``{{ foo|raw ~ bar }}`` won't give the expected result as
-    escaping is applied on the result of the concatenation, not on the
+    concatenation, ``{{ value|raw ~ other }}`` won't give the expected result
+    as escaping is applied on the result of the concatenation, not on the
     individual variables (so, the ``raw`` filter won't have any effect here).
 
 Sandbox Extension
 ~~~~~~~~~~~~~~~~~
 
-The ``sandbox`` extension can be used to evaluate untrusted code. Access to
-unsafe attributes and methods is prohibited. The sandbox security is managed
-by a policy instance. By default, Twig comes with one policy class:
-``\Twig\Sandbox\SecurityPolicy``. This class allows you to white-list some
-tags, filters, properties, and methods::
-
-    $tags = ['if'];
-    $filters = ['upper'];
-    $methods = [
-        'Article' => ['getTitle', 'getBody'],
-    ];
-    $properties = [
-        'Article' => ['title', 'body'],
-    ];
-    $functions = ['range'];
-    $policy = new \Twig\Sandbox\SecurityPolicy($tags, $filters, $methods, $properties, $functions);
-
-With the previous configuration, the security policy will only allow usage of
-the ``if`` tag, and the ``upper`` filter. Moreover, the templates will only be
-able to call the ``getTitle()`` and ``getBody()`` methods on ``Article``
-objects, and the ``title`` and ``body`` public properties. Everything else
-won't be allowed and will generate a ``\Twig\Sandbox\SecurityError`` exception.
-
-The policy object is the first argument of the sandbox constructor::
-
-    $sandbox = new \Twig\Extension\SandboxExtension($policy);
-    $twig->addExtension($sandbox);
-
-By default, the sandbox mode is disabled and should be enabled when including
-untrusted template code by using the ``sandbox`` tag:
-
-.. code-block:: twig
-
-    {% sandbox %}
-        {% include 'user.html' %}
-    {% endsandbox %}
-
-You can sandbox all templates by passing ``true`` as the second argument of
-the extension constructor::
-
-    $sandbox = new \Twig\Extension\SandboxExtension($policy, true);
+The ``sandbox`` extension can be used to evaluate untrusted code. Read more
+about it in the :doc:`sandbox` chapter.
 
 Profiler Extension
 ~~~~~~~~~~~~~~~~~~
@@ -559,12 +520,6 @@ Twig supports the following optimizations:
 
 * ``\Twig\NodeVisitor\OptimizerNodeVisitor::OPTIMIZE_FOR``, optimizes the ``for`` tag by
   removing the ``loop`` variable creation whenever possible.
-
-* ``\Twig\NodeVisitor\OptimizerNodeVisitor::OPTIMIZE_RAW_FILTER``, removes the ``raw``
-  filter whenever possible.
-
-* ``\Twig\NodeVisitor\OptimizerNodeVisitor::OPTIMIZE_TEXT_NODES``, optimizes the text
-  nodes by merging consecutive text nodes into a single one.
 
 Exceptions
 ----------

@@ -104,8 +104,8 @@ What?      Implementation difficulty? How often? When?
 Globals
 -------
 
-A global variable is like any other template variable, except that it's
-available in all templates and macros::
+Global variables are available in all templates and macros. Use ``addGlobal()``
+to add a global variable to a Twig environment::
 
     $twig = new \Twig\Environment($loader);
     $twig->addGlobal('text', new Text());
@@ -271,22 +271,58 @@ A dynamic filter can define more than one dynamic parts::
 
 The filter receives all dynamic part values before the normal filter arguments,
 but after the environment and the context. For instance, a call to
-``'foo'|a_path_b()`` will result in the following arguments to be passed to the
-filter: ``('a', 'b', 'foo')``.
+``'Paris'|a_path_b()`` will result in the following arguments to be passed to the
+filter: ``('a', 'b', 'Paris')``.
 
 Deprecated Filters
 ~~~~~~~~~~~~~~~~~~
 
-You can mark a filter as being deprecated by setting the ``deprecated`` option
-to ``true``. You can also give an alternative filter that replaces the
-deprecated one when that makes sense::
+.. versionadded:: 3.15
+
+    The ``deprecation_info`` option was added in Twig 3.15.
+
+You can mark a filter as being deprecated by setting the ``deprecation_info``
+option::
 
     $filter = new \Twig\TwigFilter('obsolete', function () {
         // ...
-    }, ['deprecated' => true, 'alternative' => 'new_one']);
+    }, ['deprecation_info' => new DeprecatedCallableInfo('twig/twig', '3.11', 'new_one')]);
+
+The ``DeprecatedCallableInfo`` constructor takes the following parameters:
+
+* The Composer package name that defines the filter;
+* The version when the filter was deprecated.
+
+Optionally, you can also provide the following parameters about an alternative:
+
+* The package name that contains the alternative filter;
+* The alternative filter name that replaces the deprecated one;
+* The package version that added the alternative filter.
 
 When a filter is deprecated, Twig emits a deprecation notice when compiling a
 template using it. See :ref:`deprecation-notices` for more information.
+
+.. note::
+
+    Before Twig 3.15, you can mark a filter as being deprecated by setting the
+    ``deprecated`` option to ``true``. You can also give an alternative filter
+    that replaces the deprecated one when that makes sense::
+
+        $filter = new \Twig\TwigFilter('obsolete', function () {
+            // ...
+        }, ['deprecated' => true, 'alternative' => 'new_one']);
+
+    .. versionadded:: 3.11
+
+        The ``deprecating_package`` option was added in Twig 3.11.
+
+    You can also set the ``deprecating_package`` option to specify the package
+    that is deprecating the filter, and ``deprecated`` can be set to the
+    package version when the filter was deprecated::
+
+        $filter = new \Twig\TwigFilter('obsolete', function () {
+            // ...
+        }, ['deprecated' => '1.1', 'deprecating_package' => 'twig/some-package']);
 
 Functions
 ---------
@@ -413,7 +449,7 @@ Most of the time though, a tag is not needed:
 
 * If your tag does not output anything, but only exists because of a side
   effect, create a **function** that returns nothing and call it via the
-  :doc:`filter <tags/do>` tag.
+  :doc:`do <tags/do>` tag.
 
   For instance, if you want to create a tag that logs text, create a ``log``
   function instead and call it via the :doc:`do <tags/do>` tag:
@@ -475,7 +511,7 @@ Now, let's see the actual code of this class::
             $value = $parser->getExpressionParser()->parseExpression();
             $stream->expect(\Twig\Token::BLOCK_END_TYPE);
 
-            return new CustomSetNode($name, $value, $token->getLine(), $this->getTag());
+            return new CustomSetNode($name, $value, $token->getLine());
         }
 
         public function getTag()
@@ -522,9 +558,9 @@ The ``CustomSetNode`` class itself is quite short::
 
     class CustomSetNode extends \Twig\Node\Node
     {
-        public function __construct($name, \Twig\Node\Expression\AbstractExpression $value, $line, $tag = null)
+        public function __construct($name, \Twig\Node\Expression\AbstractExpression $value, $line)
         {
-            parent::__construct(['value' => $value], ['name' => $name], $line, $tag);
+            parent::__construct(['value' => $value], ['name' => $name], $line);
         }
 
         public function compile(\Twig\Compiler $compiler)
@@ -667,6 +703,16 @@ method::
 
         // ...
     }
+
+.. caution::
+
+    Globals are fetched once from extensions and then cached for the lifetime
+    of the Twig environment. It means that globals should not be used to store
+    values that can change during the lifetime of the Twig environment. For
+    instance, if you're using an application server like RoadRunner or
+    FrankenPHP, you should not store values related to the current context (like
+    the HTTP request). If you do so, don't forget to reset the cache between
+    requests by calling ``Environment::resetGlobals()``.
 
 Functions
 ~~~~~~~~~
@@ -878,14 +924,14 @@ structure in your test directory::
 
     Fixtures/
         filters/
-            foo.test
-            bar.test
+            lower.test
+            upper.test
         functions/
-            foo.test
-            bar.test
+            date.test
+            format.test
         tags/
-            foo.test
-            bar.test
+            for.test
+            if.test
     IntegrationTest.php
 
 The ``IntegrationTest.php`` file should look like this::
