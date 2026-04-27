@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node;
 
 /*
@@ -15,8 +24,8 @@ use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 use Twig\Node\BodyNode;
 use Twig\Node\EmptyNode;
-use Twig\Node\Expression\ConditionalExpression;
 use Twig\Node\Expression\ConstantExpression;
+use Twig\Node\Expression\Ternary\ConditionalTernary;
 use Twig\Node\Expression\Variable\AssignContextVariable;
 use Twig\Node\Expression\Variable\AssignTemplateVariable;
 use Twig\Node\Expression\Variable\TemplateVariable;
@@ -128,8 +137,7 @@ class __TwigTemplate_%x extends Template
         return new Source("", "foo.twig", "");
     }
 }
-EOF
-            , $twig, true];
+EOF, $twig, true];
 
         $import = new ImportNode(new ConstantExpression('foo.twig', 1), new AssignTemplateVariable(new TemplateVariable('macro', 2), true), 2);
 
@@ -183,9 +191,9 @@ class __TwigTemplate_%x extends Template
     {
         \$macros = \$this->macros;
         // line 2
-        \$macros["macro"] = \$this->macros["macro"] = \$this->loadTemplate("foo.twig", "foo.twig", 2)->unwrap();
+        \$macros["macro"] = \$this->macros["macro"] = \$this->load("foo.twig", 2)->unwrap();
         // line 1
-        \$this->parent = \$this->loadTemplate("layout.twig", "foo.twig", 1);
+        \$this->parent = \$this->load("layout.twig", 1);
         yield from \$this->parent->unwrap()->yield(\$context, array_merge(\$this->blocks, \$blocks));
     }
 
@@ -218,12 +226,11 @@ class __TwigTemplate_%x extends Template
         return new Source("", "foo.twig", "");
     }
 }
-EOF
-            , $twig, true];
+EOF, $twig, true];
 
         $set = new SetNode(false, new Nodes([new AssignContextVariable('foo', 4)]), new Nodes([new ConstantExpression('foo', 4)]), 4);
         $body = new BodyNode([$set]);
-        $extends = new ConditionalExpression(
+        $extends = new ConditionalTernary(
             new ConstantExpression(true, 2),
             new ConstantExpression('foo', 2),
             new ConstantExpression('foo', 2),
@@ -271,7 +278,7 @@ class __TwigTemplate_%x extends Template
     protected function doGetParent(array \$context): bool|string|Template|TemplateWrapper
     {
         // line 2
-        return \$this->loadTemplate(((true) ? ("foo") : ("foo")), "foo.twig", 2);
+        return \$this->load(((true) ? ("foo") : ("foo")), 2);
     }
 
     protected function doDisplay(array \$context, array \$blocks = []): iterable
@@ -312,8 +319,7 @@ class __TwigTemplate_%x extends Template
         return new Source("{{ foo }}", "foo.twig", "");
     }
 }
-EOF
-            , $twig, true];
+EOF, $twig, true];
 
         return $tests;
     }

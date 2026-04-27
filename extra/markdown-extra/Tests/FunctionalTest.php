@@ -37,7 +37,7 @@ Hello
 =====
 
 Great!
-EOF
+EOF,
             ]));
             $twig->addExtension(new MarkdownExtension());
             $twig->addRuntimeLoader(new class($class) implements RuntimeLoaderInterface {
@@ -67,8 +67,7 @@ Hello
 
 Great!
 {% endapply %}
-EOF
-                , "<h1>Hello</h1>\n+<p>Great!</p>"],
+EOF, "<h1>Hello</h1>\n+<p>Great!</p>"],
             [<<<EOF
 {% apply markdown_to_html %}
     Hello
@@ -76,8 +75,7 @@ EOF
 
     Great!
 {% endapply %}
-EOF
-                , "<h1>Hello</h1>\n+<p>Great!</p>"],
+EOF, "<h1>Hello</h1>\n+<p>Great!</p>"],
             ["{{ include('html')|markdown_to_html }}", "<h1>Hello</h1>\n+<p>Great!</p>"],
         ];
     }

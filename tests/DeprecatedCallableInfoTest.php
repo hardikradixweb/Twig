@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -26,11 +35,11 @@ class DeprecatedCallableInfoTest extends TestCase
 
         $deprecations = [];
         try {
-            set_error_handler(function ($type, $msg) use (&$deprecations) {
+            set_error_handler(static function ($type, $msg) use (&$deprecations) {
                 if (\E_USER_DEPRECATED === $type) {
                     $deprecations[] = $msg;
                 }
-    
+
                 return false;
             });
 
@@ -58,11 +67,11 @@ class DeprecatedCallableInfoTest extends TestCase
 
         $deprecations = [];
         try {
-            set_error_handler(function ($type, $msg) use (&$deprecations) {
+            set_error_handler(static function ($type, $msg) use (&$deprecations) {
                 if (\E_USER_DEPRECATED === $type) {
                     $deprecations[] = $msg;
                 }
-    
+
                 return false;
             });
 

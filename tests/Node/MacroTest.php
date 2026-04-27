@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node;
 
 /*
@@ -42,6 +51,8 @@ class MacroTest extends NodeTestCase
             new ConstantExpression(null, 1),
             new LocalVariable('bar', 1),
             new ConstantExpression('Foo', 1),
+            new LocalVariable('_underscore', 1),
+            new ConstantExpression(null, 1),
         ], 1);
 
         $body = new BodyNode([new TextNode('foo', 1)]);
@@ -49,12 +60,13 @@ class MacroTest extends NodeTestCase
 
         yield 'with use_yield = true' => [$node, <<<EOF
 // line 1
-public function macro_foo(\$foo = null, \$bar = "Foo", ...\$varargs): string|Markup
+public function macro_foo(\$foo = null, \$bar = "Foo", \$_underscore = null, ...\$varargs): string|Markup
 {
     \$macros = \$this->macros;
     \$context = [
         "foo" => \$foo,
         "bar" => \$bar,
+        "_underscore" => \$_underscore,
         "varargs" => \$varargs,
     ] + \$this->env->getGlobals();
 
@@ -65,18 +77,18 @@ public function macro_foo(\$foo = null, \$bar = "Foo", ...\$varargs): string|Mar
         yield from [];
     })(), false))) ? '' : new Markup(\$tmp, \$this->env->getCharset());
 }
-EOF
-            , new Environment(new ArrayLoader(), ['use_yield' => true]),
+EOF, new Environment(new ArrayLoader(), ['use_yield' => true]),
         ];
 
         yield 'with use_yield = false' => [$node, <<<EOF
 // line 1
-public function macro_foo(\$foo = null, \$bar = "Foo", ...\$varargs): string|Markup
+public function macro_foo(\$foo = null, \$bar = "Foo", \$_underscore = null, ...\$varargs): string|Markup
 {
     \$macros = \$this->macros;
     \$context = [
         "foo" => \$foo,
         "bar" => \$bar,
+        "_underscore" => \$_underscore,
         "varargs" => \$varargs,
     ] + \$this->env->getGlobals();
 
@@ -87,8 +99,7 @@ public function macro_foo(\$foo = null, \$bar = "Foo", ...\$varargs): string|Mar
         yield from [];
     })())) ? '' : new Markup(\$tmp, \$this->env->getCharset());
 }
-EOF
-            , new Environment(new ArrayLoader(), ['use_yield' => false]),
+EOF, new Environment(new ArrayLoader(), ['use_yield' => false]),
         ];
     }
 }

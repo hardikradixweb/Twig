@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node\Expression;
 
 /*
@@ -16,6 +25,9 @@ use Twig\Node\Expression\NullCoalesceExpression;
 use Twig\Node\Expression\Variable\ContextVariable;
 use Twig\Test\NodeTestCase;
 
+/**
+ * @group legacy
+ */
 class NullCoalesceTest extends NodeTestCase
 {
     public static function provideTests(): iterable

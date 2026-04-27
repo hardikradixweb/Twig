@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node\Expression;
 
 /*
@@ -165,7 +174,7 @@ class FilterTest extends NodeTestCase
     protected static function createEnvironment(): Environment
     {
         $env = new Environment(new ArrayLoader());
-        $env->addFilter(new TwigFilter('anonymous', function () {}));
+        $env->addFilter(new TwigFilter('anonymous', static function () {}));
         $env->addFilter(new TwigFilter('bar', 'Twig\Tests\Node\Expression\twig_tests_filter_dummy', ['needs_environment' => true]));
         $env->addFilter(new TwigFilter('bar_closure', \Closure::fromCallable(twig_tests_filter_dummy::class), ['needs_environment' => true]));
         $env->addFilter(new TwigFilter('barbar', 'Twig\Tests\Node\Expression\twig_tests_filter_barbar', ['needs_context' => true, 'is_variadic' => true]));
@@ -180,7 +189,7 @@ class FilterTest extends NodeTestCase
 
     private static function createExtension(): AbstractExtension
     {
-        return new class() extends AbstractExtension {
+        return new class extends AbstractExtension {
             public function getFilters(): array
             {
                 return [

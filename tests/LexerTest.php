@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -54,16 +63,6 @@ class LexerTest extends TestCase
         $this->assertEquals(2, $this->countToken($template, Token::PUNCTUATION_TYPE, '}'));
     }
 
-    public function testSpreadOperator()
-    {
-        $template = '{{ { a: "a", ...{ b: "b" } } }}';
-
-        $this->assertEquals(1, $this->countToken($template, Token::SPREAD_TYPE, '...'));
-        // sanity check on lexing after spread
-        $this->assertEquals(2, $this->countToken($template, Token::PUNCTUATION_TYPE, '{'));
-        $this->assertEquals(2, $this->countToken($template, Token::PUNCTUATION_TYPE, '}'));
-    }
-
     protected function countToken($template, $type, $value = null)
     {
         $lexer = new Lexer(new Environment(new ArrayLoader()));
@@ -72,7 +71,7 @@ class LexerTest extends TestCase
         $count = 0;
         while (!$stream->isEOF()) {
             $token = $stream->next();
-            if ($type === $token->getType()) {
+            if ($token->test($type)) {
                 if (null === $value || $value === $token->getValue()) {
                     ++$count;
                 }
@@ -201,7 +200,7 @@ class LexerTest extends TestCase
             EOF,
             "\x6",
         ];
-        yield  [
+        yield [
             <<<'EOF'
             {{ '\065\x64' }}
             EOF,
@@ -421,6 +420,56 @@ class LexerTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFilterAndAttributeNamedAfterOperator()
+    {
+        // Ensure that filters/attributes aren't mistaken for operators when their names conflict
+        // (see https://github.com/twigphp/Twig/issues/4767)
+        $template = '{{ \'foo\'|and }}'
+            .'{{ \'bar\' | and }}'
+            .'{{ foo.and }}'
+            .'{{ bar . and }}'
+            .'{{ foo and bar }}';
+
+        $lexer = new Lexer(new Environment(new ArrayLoader()));
+        $stream = $lexer->tokenize(new Source($template, 'index'));
+        foreach (['foo', 'bar'] as $value) {
+            $stream->expect(Token::VAR_START_TYPE);
+            $stream->expect(Token::STRING_TYPE, $value);
+            $stream->expect(Token::OPERATOR_TYPE, '|');
+            $stream->expect(Token::NAME_TYPE, 'and');
+            $stream->expect(Token::VAR_END_TYPE);
+        }
+        foreach (['foo', 'bar'] as $value) {
+            $stream->expect(Token::VAR_START_TYPE);
+            $stream->expect(Token::NAME_TYPE, $value);
+            $stream->expect(Token::OPERATOR_TYPE, '.');
+            $stream->expect(Token::NAME_TYPE, 'and');
+            $stream->expect(Token::VAR_END_TYPE);
+        }
+        $stream->expect(Token::VAR_START_TYPE);
+        $stream->expect(Token::NAME_TYPE, 'foo');
+        $stream->expect(Token::OPERATOR_TYPE, 'and');
+        $stream->expect(Token::NAME_TYPE, 'bar');
+        $stream->expect(Token::VAR_END_TYPE);
+
+        // add a dummy assertion here to satisfy PHPUnit, the only thing we want to test is that the code above
+        // can be executed without throwing any exceptions
+    }
+
+    public function testLiteralIsNotAnOperator()
+    {
+        // "literal" is the name of the LiteralExpressionParser but should not be treated as an operator token
+        $template = '{{ literal }}';
+
+        $lexer = new Lexer(new Environment(new ArrayLoader()));
+        $stream = $lexer->tokenize(new Source($template, 'index'));
+        $stream->expect(Token::VAR_START_TYPE);
+        $stream->expect(Token::NAME_TYPE, 'literal');
+        $stream->expect(Token::VAR_END_TYPE);
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testUnterminatedVariable()
     {
         $template = '
@@ -631,5 +680,47 @@ bar
         yield ['{#
             Some regular comment # this is an inline comment
         #}'];
+    }
+
+    /**
+     * @dataProvider getTemplateForUnclosedBracketInExpression
+     */
+    public function testUnclosedBracketInExpression(string $template, string $bracket)
+    {
+        $lexer = new Lexer(new Environment(new ArrayLoader()));
+
+        $this->expectException(SyntaxError::class);
+        $this->expectExceptionMessage(\sprintf('Unclosed "%s" in "index" at line 1.', $bracket));
+
+        $lexer->tokenize(new Source($template, 'index'));
+    }
+
+    public static function getTemplateForUnclosedBracketInExpression()
+    {
+        yield ['{{ (1 + 3 }}', '('];
+        yield ['{{ obj["a" }}', '['];
+        yield ['{{ ({ a: 1) }}', '{'];
+        yield ['{{ (([1]) + 3 }}', '('];
+    }
+
+    /**
+     * @dataProvider getTemplateForUnexpectedBracketInExpression
+     */
+    public function testUnexpectedBracketInExpression(string $template, string $bracket)
+    {
+        $lexer = new Lexer(new Environment(new ArrayLoader()));
+
+        $this->expectException(SyntaxError::class);
+        $this->expectExceptionMessage(\sprintf('Unexpected "%s" in "index" at line 1.', $bracket));
+
+        $lexer->tokenize(new Source($template, 'index'));
+    }
+
+    public static function getTemplateForUnexpectedBracketInExpression()
+    {
+        yield ['{{ 1 + 3) }}', ')'];
+        yield ['{{ obj] }}', ']'];
+        yield ['{{ { a: 1 }}', '}'];
+        yield ['{{ ([1] + 3)) }}', ')'];
     }
 }

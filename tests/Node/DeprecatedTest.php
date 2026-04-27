@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node;
 
 /*
@@ -84,8 +93,7 @@ EOF
 // line 1
 \$$varName = Twig\Tests\Node\\foo();
 trigger_deprecation("twig/twig", "1.1", \$$varName." in \"foo.twig\" at line 1.");
-EOF
-            , $environment];
+EOF, $environment];
 
         return $tests;
     }

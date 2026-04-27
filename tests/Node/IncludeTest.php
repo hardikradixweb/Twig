@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node;
 
 /*
@@ -12,8 +21,8 @@ namespace Twig\Tests\Node;
  */
 
 use Twig\Node\Expression\ArrayExpression;
-use Twig\Node\Expression\ConditionalExpression;
 use Twig\Node\Expression\ConstantExpression;
+use Twig\Node\Expression\Ternary\ConditionalTernary;
 use Twig\Node\IncludeNode;
 use Twig\Test\NodeTestCase;
 
@@ -42,11 +51,11 @@ class IncludeTest extends NodeTestCase
         $node = new IncludeNode($expr, null, false, false, 1);
         $tests[] = [$node, <<<'EOF'
 // line 1
-yield from $this->loadTemplate("foo.twig", null, 1)->unwrap()->yield($context);
+yield from $this->load("foo.twig", 1)->unwrap()->yield($context);
 EOF
         ];
 
-        $expr = new ConditionalExpression(
+        $expr = new ConditionalTernary(
             new ConstantExpression(true, 1),
             new ConstantExpression('foo', 1),
             new ConstantExpression('foo', 1),
@@ -55,7 +64,7 @@ EOF
         $node = new IncludeNode($expr, null, false, false, 1);
         $tests[] = [$node, <<<'EOF'
 // line 1
-yield from $this->loadTemplate(((true) ? ("foo") : ("foo")), null, 1)->unwrap()->yield($context);
+yield from $this->load(((true) ? ("foo") : ("foo")), 1)->unwrap()->yield($context);
 EOF
         ];
 
@@ -64,14 +73,14 @@ EOF
         $node = new IncludeNode($expr, $vars, false, false, 1);
         $tests[] = [$node, <<<'EOF'
 // line 1
-yield from $this->loadTemplate("foo.twig", null, 1)->unwrap()->yield(CoreExtension::merge($context, ["foo" => true]));
+yield from $this->load("foo.twig", 1)->unwrap()->yield(CoreExtension::merge($context, ["foo" => true]));
 EOF
         ];
 
         $node = new IncludeNode($expr, $vars, true, false, 1);
         $tests[] = [$node, <<<'EOF'
 // line 1
-yield from $this->loadTemplate("foo.twig", null, 1)->unwrap()->yield(CoreExtension::toArray(["foo" => true]));
+yield from $this->load("foo.twig", 1)->unwrap()->yield(CoreExtension::toArray(["foo" => true]));
 EOF
         ];
 
@@ -79,7 +88,7 @@ EOF
         $tests[] = [$node, <<<EOF
 // line 1
 try {
-    \$_v%s = \$this->loadTemplate("foo.twig", null, 1);
+    \$_v%s = \$this->load("foo.twig", 1);
 } catch (LoaderError \$e) {
     // ignore missing template
     \$_v%s = null;
@@ -87,8 +96,7 @@ try {
 if (\$_v%s) {
     yield from \$_v%s->unwrap()->yield(CoreExtension::toArray(["foo" => true]));
 }
-EOF
-            , null, true];
+EOF, null, true];
 
         return $tests;
     }

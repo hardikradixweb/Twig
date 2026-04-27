@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -68,7 +77,7 @@ class TemplateTest extends TestCase
             ['{{ null["a"] }}', 'Impossible to access a key ("a") on a null variable in "%s" at line 1.'],
             ['{{ empty_array["a"] }}', 'Key "a" does not exist as the sequence/mapping is empty in "%s" at line 1.'],
             ['{{ array["a"] }}', 'Key "a" for sequence/mapping with keys "foo" does not exist in "%s" at line 1.'],
-            ['{{ array_access["a"] }}', 'Key "a" in object with ArrayAccess of class "Twig\Tests\TemplateArrayAccessObject" does not exist in "%s" at line 1.'],
+            ['{{ array_access["a"] }}', 'Key "a" does not exist in ArrayAccess-able object of class "Twig\Tests\TemplateArrayAccessObject" in "%s" at line 1.'],
             ['{{ string.a }}', 'Impossible to access an attribute ("a") on a string variable ("foo") in "%s" at line 1.'],
             ['{{ string.a() }}', 'Impossible to invoke a method ("a") on a string variable ("foo") in "%s" at line 1.'],
             ['{{ null.a }}', 'Impossible to access an attribute ("a") on a null variable in "%s" at line 1.'],
@@ -77,8 +86,8 @@ class TemplateTest extends TestCase
             ['{{ empty_array.a }}', 'Key "a" does not exist as the sequence/mapping is empty in "%s" at line 1.'],
             ['{{ array.a }}', 'Key "a" for sequence/mapping with keys "foo" does not exist in "%s" at line 1.'],
             ['{{ array.(-10) }}', 'Key "-10" for sequence/mapping with keys "foo" does not exist in "%s" at line 1.'],
-            ['{{ array_access.a }}', 'Neither the property "a" nor one of the methods "a()", "geta()"/"isa()"/"hasa()" or "__call()" exist and have public access in class "Twig\Tests\TemplateArrayAccessObject" in "%s" at line 1.'],
-            ['{% from _self import foo %}{% macro foo(obj) %}{{ obj.missing_method() }}{% endmacro %}{{ foo(array_access) }}', 'Neither the property "missing_method" nor one of the methods "missing_method()", "getmissing_method()"/"ismissing_method()"/"hasmissing_method()" or "__call()" exist and have public access in class "Twig\Tests\TemplateArrayAccessObject" in "%s" at line 1.'],
+            ['{{ array_access.a }}', 'Neither the property "a" nor one of the methods "a()", "geta()", "isa()", "hasa()" or "__call()" exist and have public access in class "Twig\Tests\TemplateArrayAccessObject" in "%s" at line 1.'],
+            ['{% from _self import foo %}{% macro foo(obj) %}{{ obj.missing_method() }}{% endmacro %}{{ foo(array_access) }}', 'Neither the property "missing_method" nor one of the methods "missing_method()", "getmissing_method()", "ismissing_method()", "hasmissing_method()" or "__call()" exist and have public access in class "Twig\Tests\TemplateArrayAccessObject" in "%s" at line 1.'],
             ['{{ magic_exception.test }}', 'An exception has been thrown during the rendering of a template ("Hey! Don\'t try to isset me!") in "%s" at line 1.'],
             ['{{ object["a"] }}', 'Impossible to access a key "a" on an object of class "stdClass" that does not implement ArrayAccess interface in "%s" at line 1.'],
         ];
@@ -141,6 +150,43 @@ class TemplateTest extends TestCase
         ];
     }
 
+    /**
+     * @dataProvider getNullCoalesceWithImportedMacroData
+     */
+    public function testNullCoalesceWithImportedMacro(array $templates, string $expected)
+    {
+        $twig = new Environment(new ArrayLoader($templates));
+
+        $this->assertSame($expected, trim($twig->render('index.twig')));
+    }
+
+    public static function getNullCoalesceWithImportedMacroData(): array
+    {
+        return [
+            'from import' => [
+                [
+                    'index.twig' => '{% from "helper.twig" import foo %}{{ foo("bar") ?? "" }}',
+                    'helper.twig' => '{% macro foo(param) %}{{ param }}{% endmacro %}',
+                ],
+                'bar',
+            ],
+            'from import with undefined macro falls back' => [
+                [
+                    'index.twig' => '{% from "helper.twig" import foo, nonexistent %}{{ nonexistent("bar") ?? "fallback" }}',
+                    'helper.twig' => '{% macro foo(param) %}{{ param }}{% endmacro %}',
+                ],
+                'fallback',
+            ],
+            'from import used multiple times' => [
+                [
+                    'index.twig' => '{% from "helper.twig" import foo %}{{ foo("a") ?? "" }}-{{ foo("b") ?? "" }}',
+                    'helper.twig' => '{% macro foo(param) %}{{ param }}{% endmacro %}',
+                ],
+                'a-b',
+            ],
+        ];
+    }
+
     public function testRenderBlockWithUndefinedBlock()
     {
         $twig = new Environment(new ArrayLoader());
@@ -194,7 +240,7 @@ class TemplateTest extends TestCase
         }
         $this->assertSame('FloatButString', $array['1.5']);
         $this->assertSame('IntegerButStringWithLeadingZeros', $array['01']);
-        $this->assertSame('EmptyString', $array[null]);
+        $this->assertSame('EmptyString', $array['']);
 
         $this->assertSame('Zero', CoreExtension::getAttribute($twig, $template->getSourceContext(), $array, false), 'false is treated as 0 when accessing a sequence/mapping (equals PHP behavior)');
         $this->assertSame('One', CoreExtension::getAttribute($twig, $template->getSourceContext(), $array, true), 'true is treated as 1 when accessing a sequence/mapping (equals PHP behavior)');
@@ -394,6 +440,10 @@ class TemplateTest extends TestCase
             [true, ['foo' => 'bar'], $arrayAccess, 'vars', [], $anyType],
         ]);
 
+        // test for Closure::__invoke()
+        $tests[] = [true, 'closure called', static fn (): string => 'closure called', '__invoke', [], $anyType];
+        $tests[] = [true, 'closure called', static fn (): string => 'closure called', '__invoke', [], $methodType];
+
         // tests when input is not an array or object
         $tests = array_merge($tests, [
             [false, null, 42, 'a', [], $anyType, 'Impossible to access an attribute ("a") on a int variable ("42") in "index.twig".'],
@@ -554,7 +604,7 @@ class TemplatePropertyObject
 {
     public $defined = 'defined';
     public $zero = 0;
-    public $null = null;
+    public $null;
     public $bar = true;
     public $foo = true;
     public $baz = 'baz';

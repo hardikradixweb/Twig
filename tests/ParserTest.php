@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -17,6 +26,7 @@ use Twig\Error\SyntaxError;
 use Twig\Lexer;
 use Twig\Loader\ArrayLoader;
 use Twig\Node\EmptyNode;
+use Twig\Node\Expression\ConstantExpression;
 use Twig\Node\Node;
 use Twig\Node\Nodes;
 use Twig\Node\SetNode;
@@ -36,7 +46,7 @@ class ParserTest extends TestCase
             new Token(Token::NAME_TYPE, 'foo', 1),
             new Token(Token::BLOCK_END_TYPE, '', 1),
             new Token(Token::EOF_TYPE, '', 1),
-        ]);
+        ], new Source('', ''));
         $parser = new Parser(new Environment(new ArrayLoader()));
 
         $this->expectException(SyntaxError::class);
@@ -52,7 +62,7 @@ class ParserTest extends TestCase
             new Token(Token::NAME_TYPE, 'foobar', 1),
             new Token(Token::BLOCK_END_TYPE, '', 1),
             new Token(Token::EOF_TYPE, '', 1),
-        ]);
+        ], new Source('', ''));
         $parser = new Parser(new Environment(new ArrayLoader()));
 
         $this->expectException(SyntaxError::class);
@@ -68,7 +78,6 @@ class ParserTest extends TestCase
     {
         $parser = $this->getParser();
         $m = new \ReflectionMethod($parser, 'filterBodyNodes');
-        $m->setAccessible(true);
 
         $this->assertEquals($expected, $m->invoke($parser, $input));
     }
@@ -99,7 +108,6 @@ class ParserTest extends TestCase
         $parser = $this->getParser();
 
         $m = new \ReflectionMethod($parser, 'filterBodyNodes');
-        $m->setAccessible(true);
 
         $this->expectException(SyntaxError::class);
         $m->invoke($parser, $input);
@@ -121,7 +129,6 @@ class ParserTest extends TestCase
         $parser = $this->getParser();
 
         $m = new \ReflectionMethod($parser, 'filterBodyNodes');
-        $m->setAccessible(true);
         $this->assertNull($m->invoke($parser, new TextNode(\chr(0xEF).\chr(0xBB).\chr(0xBF).$emptyNode, 1)));
     }
 
@@ -153,10 +160,9 @@ class ParserTest extends TestCase
             new Token(Token::NAME_TYPE, 'foo', 1),
             new Token(Token::VAR_END_TYPE, '', 1),
             new Token(Token::EOF_TYPE, '', 1),
-        ]));
+        ], new Source('', '')));
 
         $p = new \ReflectionProperty($parser, 'parent');
-        $p->setAccessible(true);
         $this->assertNull($p->getValue($parser));
     }
 
@@ -173,8 +179,7 @@ class ParserTest extends TestCase
 {% macro foo() %}
     {{ foo }}
 {% endmacro %}
-EOF
-            , 'index')));
+EOF, 'index')));
 
         // The getVarName() must not depend on the template loaders,
         // If this test does not throw any exception, that's good.
@@ -204,11 +209,10 @@ EOF
     protected function getParser()
     {
         $parser = new Parser(new Environment(new ArrayLoader()));
-        $parser->setParent(new EmptyNode());
+        $parser->setParent(new ConstantExpression('base.html', 1));
 
         $p = new \ReflectionProperty($parser, 'stream');
-        $p->setAccessible(true);
-        $p->setValue($parser, new TokenStream([]));
+        $p->setValue($parser, new TokenStream([], new Source('', '')));
 
         return $parser;
     }
@@ -225,7 +229,7 @@ class TestTokenParser extends AbstractTokenParser
             new Token(Token::STRING_TYPE, 'base', 1),
             new Token(Token::BLOCK_END_TYPE, '', 1),
             new Token(Token::EOF_TYPE, '', 1),
-        ]));
+        ], new Source('', '')));
 
         $this->parser->getStream()->expect(Token::BLOCK_END_TYPE);
 

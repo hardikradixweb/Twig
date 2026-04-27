@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node\Expression;
 
 /*
@@ -105,7 +114,7 @@ class FunctionTest extends NodeTestCase
     protected static function createEnvironment(): Environment
     {
         $env = new Environment(new ArrayLoader());
-        $env->addFunction(new TwigFunction('anonymous', function () {}));
+        $env->addFunction(new TwigFunction('anonymous', static function () {}));
         $env->addFunction(new TwigFunction('foo', 'Twig\Tests\Node\Expression\twig_tests_function_dummy', []));
         $env->addFunction(new TwigFunction('foo_closure', \Closure::fromCallable(twig_tests_function_dummy::class), []));
         $env->addFunction(new TwigFunction('bar', 'Twig\Tests\Node\Expression\twig_tests_function_dummy', ['needs_environment' => true]));

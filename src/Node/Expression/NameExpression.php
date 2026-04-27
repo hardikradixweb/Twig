@@ -15,8 +15,11 @@ namespace Twig\Node\Expression;
 use Twig\Compiler;
 use Twig\Node\Expression\Variable\ContextVariable;
 
-class NameExpression extends AbstractExpression
+class NameExpression extends AbstractExpression implements SupportDefinedTestInterface
 {
+    use SupportDefinedTestDeprecationTrait;
+    use SupportDefinedTestTrait;
+
     private $specialVars = [
         '_self' => '$this->getTemplateName()',
         '_context' => '$context',
@@ -29,7 +32,7 @@ class NameExpression extends AbstractExpression
             trigger_deprecation('twig/twig', '3.15', 'The "%s" class is deprecated, use "%s" instead.', self::class, ContextVariable::class);
         }
 
-        parent::__construct([], ['name' => $name, 'is_defined_test' => false, 'ignore_strict_check' => false, 'always_defined' => false], $lineno);
+        parent::__construct([], ['name' => $name, 'ignore_strict_check' => false, 'always_defined' => false], $lineno);
     }
 
     public function compile(Compiler $compiler): void
@@ -38,8 +41,8 @@ class NameExpression extends AbstractExpression
 
         $compiler->addDebugInfo($this);
 
-        if ($this->getAttribute('is_defined_test')) {
-            if (isset($this->specialVars[$name])) {
+        if ($this->definedTest) {
+            if (isset($this->specialVars[$name]) || $this->getAttribute('always_defined')) {
                 $compiler->repr(true);
             } elseif (\PHP_VERSION_ID >= 70400) {
                 $compiler
@@ -77,10 +80,7 @@ class NameExpression extends AbstractExpression
                     ->string($name)
                     ->raw(']) || array_key_exists(')
                     ->string($name)
-                    ->raw(', $context) ?')
-                ;
-                $compiler
-                    ->raw(' $context[')
+                    ->raw(', $context) ? $context[')
                     ->string($name)
                     ->raw('] : (function () { throw new RuntimeError(\'Variable ')
                     ->string($name)
@@ -110,6 +110,6 @@ class NameExpression extends AbstractExpression
     {
         trigger_deprecation('twig/twig', '3.11', 'The "%s()" method is deprecated and will be removed in Twig 4.0.', __METHOD__);
 
-        return !$this->isSpecial() && !$this->getAttribute('is_defined_test');
+        return !isset($this->specialVars[$this->getAttribute('name')]) && !$this->definedTest;
     }
 }

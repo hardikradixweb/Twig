@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node;
 
 /*
@@ -58,8 +67,7 @@ EOF
     yield "foo";
     yield from [];
 })(), false))) ? '' : new Markup(\$tmp, \$this->env->getCharset());
-EOF
-            , new Environment(new ArrayLoader(), ['use_yield' => true]),
+EOF, new Environment(new ArrayLoader(), ['use_yield' => true]),
         ];
 
         $tests[] = [$node, <<<'EOF'
@@ -68,8 +76,7 @@ $context["foo"] = ('' === $tmp = \Twig\Extension\CoreExtension::captureOutput((f
     yield "foo";
     yield from [];
 })())) ? '' : new Markup($tmp, $this->env->getCharset());
-EOF
-            , new Environment(new ArrayLoader(), ['use_yield' => false]),
+EOF, new Environment(new ArrayLoader(), ['use_yield' => false]),
         ];
 
         $names = new Nodes([new AssignContextVariable('foo', 1)], 1);

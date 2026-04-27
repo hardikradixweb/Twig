@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node;
 
 /*
@@ -37,7 +46,7 @@ class ImportTest extends NodeTestCase
 
         $tests[] = [$node, <<<EOF
 // line 1
-\$macros["macro"] = \$this->macros["macro"] = \$this->loadTemplate("foo.twig", null, 1)->unwrap();
+\$macros["macro"] = \$this->macros["macro"] = \$this->load("foo.twig", 1)->unwrap();
 EOF
         ];
 

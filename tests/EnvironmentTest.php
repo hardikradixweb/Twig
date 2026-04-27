@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -18,6 +27,10 @@ use Twig\Cache\FilesystemCache;
 use Twig\Environment;
 use Twig\Error\RuntimeError;
 use Twig\Error\SyntaxError;
+use Twig\ExpressionParser\Infix\BinaryOperatorExpressionParser;
+use Twig\ExpressionParser\InfixExpressionParserInterface;
+use Twig\ExpressionParser\Prefix\UnaryOperatorExpressionParser;
+use Twig\ExpressionParser\PrefixExpressionParserInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\ExtensionInterface;
 use Twig\Extension\GlobalsInterface;
@@ -179,7 +192,7 @@ class EnvironmentTest extends TestCase
 
         // force compilation
         $twig = new Environment($loader = new ArrayLoader(['index' => '{{ foo }}']), $options);
-        $twig->addExtension($extension = new class() extends AbstractExtension {
+        $twig->addExtension($extension = new class extends AbstractExtension {
             public bool $throw = false;
 
             public function getFilters(): array
@@ -307,8 +320,8 @@ class EnvironmentTest extends TestCase
         $this->assertArrayHasKey('foo_filter', $twig->getFilters());
         $this->assertArrayHasKey('foo_function', $twig->getFunctions());
         $this->assertArrayHasKey('foo_test', $twig->getTests());
-        $this->assertArrayHasKey('foo_unary', $twig->getUnaryOperators());
-        $this->assertArrayHasKey('foo_binary', $twig->getBinaryOperators());
+        $this->assertNotNull($twig->getExpressionParsers()->getByName(PrefixExpressionParserInterface::class, 'foo_unary'));
+        $this->assertNotNull($twig->getExpressionParsers()->getByName(InfixExpressionParserInterface::class, 'foo_binary'));
         $this->assertArrayHasKey('foo_global', $twig->getGlobals());
         $visitors = $twig->getNodeVisitors();
         $found = false;
@@ -328,7 +341,7 @@ class EnvironmentTest extends TestCase
         $twig = new Environment($loader);
         $twig->addExtension($extension);
 
-        $this->assertInstanceOf(ExtensionInterface::class, $twig->getExtension(\get_class($extension)));
+        $this->assertInstanceOf(ExtensionInterface::class, $twig->getExtension($extension::class));
         $this->assertTrue($twig->isTemplateFresh('page', time()));
     }
 
@@ -383,9 +396,9 @@ class EnvironmentTest extends TestCase
     public function testUndefinedFunctionCallback()
     {
         $twig = new Environment(new ArrayLoader());
-        $twig->registerUndefinedFunctionCallback(function (string $name) {
+        $twig->registerUndefinedFunctionCallback(static function (string $name) {
             if ('dynamic' === $name) {
-                return new TwigFunction('dynamic', function () { return 'dynamic'; });
+                return new TwigFunction('dynamic', static function () { return 'dynamic'; });
             }
 
             return false;
@@ -399,9 +412,9 @@ class EnvironmentTest extends TestCase
     public function testUndefinedFilterCallback()
     {
         $twig = new Environment(new ArrayLoader());
-        $twig->registerUndefinedFilterCallback(function (string $name) {
+        $twig->registerUndefinedFilterCallback(static function (string $name) {
             if ('dynamic' === $name) {
-                return new TwigFilter('dynamic', function () { return 'dynamic'; });
+                return new TwigFilter('dynamic', static function () { return 'dynamic'; });
             }
 
             return false;
@@ -410,6 +423,22 @@ class EnvironmentTest extends TestCase
         $this->assertNull($twig->getFilter('does_not_exist'));
         $this->assertInstanceOf(TwigFilter::class, $filter = $twig->getFilter('dynamic'));
         $this->assertSame('dynamic', $filter->getName());
+    }
+
+    public function testUndefinedTestCallback()
+    {
+        $twig = new Environment(new ArrayLoader());
+        $twig->registerUndefinedTestCallback(static function (string $name) {
+            if ('dynamic' === $name) {
+                return new TwigTest('dynamic', static function () { return 'dynamic'; });
+            }
+
+            return false;
+        });
+
+        $this->assertNull($twig->getTest('does_not_exist'));
+        $this->assertInstanceOf(TwigTest::class, $test = $twig->getTest('dynamic'));
+        $this->assertSame('dynamic', $test->getName());
     }
 
     public function testUndefinedTokenParserCallback()
@@ -475,7 +504,7 @@ EOF
     public function testResettingGlobals()
     {
         $twig = new Environment(new ArrayLoader(['index' => '']));
-        $twig->addExtension(new class() extends AbstractExtension implements GlobalsInterface {
+        $twig->addExtension(new class extends AbstractExtension implements GlobalsInterface {
             public function getGlobals(): array
             {
                 return [
@@ -594,11 +623,11 @@ class EnvironmentTest_Extension extends AbstractExtension implements GlobalsInte
         ];
     }
 
-    public function getOperators(): array
+    public function getExpressionParsers(): array
     {
         return [
-            ['foo_unary' => ['precedence' => 0]],
-            ['foo_binary' => ['precedence' => 0]],
+            new UnaryOperatorExpressionParser('', 'foo_unary', 0),
+            new BinaryOperatorExpressionParser('', 'foo_binary', 0),
         ];
     }
 

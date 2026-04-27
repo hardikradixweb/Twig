@@ -1,6 +1,15 @@
 #!/usr/bin/env php
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 require __DIR__.'/vendor/autoload.php';
 
 use Symfony\Component\Console\Application;
@@ -14,7 +23,7 @@ use SymfonyDocsBuilder\DocBuilder;
 (new Application('Twig docs Builder', '1.0'))
     ->register('build-docs')
     ->addOption('disable-cache', null, InputOption::VALUE_NONE, 'Use this option to force a full regeneration of all doc contents')
-    ->setCode(function (InputInterface $input, OutputInterface $output) {
+    ->setCode(static function (InputInterface $input, OutputInterface $output) {
         $io = new SymfonyStyle($input, $output);
         $io->text('Building all Twig docs...');
 
@@ -40,9 +49,9 @@ use SymfonyDocsBuilder\DocBuilder;
                 file_put_contents($htmlFilePath, str_replace('href="assets/', 'href="/assets/', $htmlContents));
             }
 
-            $io->success(\sprintf('The Twig docs were successfully built at %s', realpath($outputDir)));
+            $io->success(sprintf('The Twig docs were successfully built at %s', realpath($outputDir)));
         } else {
-            $io->error(\sprintf("There were some errors while building the docs:\n\n%s\n", $result->getErrorTrace()));
+            $io->error(sprintf("There were some errors while building the docs:\n\n%s\n", $result->getErrorTrace()));
             $io->newLine();
             $io->comment('Tip: you can add the -v, -vv or -vvv flags to this command to get debug information.');
 

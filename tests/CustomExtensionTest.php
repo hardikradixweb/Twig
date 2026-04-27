@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -19,6 +28,8 @@ use Twig\Loader\ArrayLoader;
 class CustomExtensionTest extends TestCase
 {
     /**
+     * @group legacy
+     *
      * @dataProvider provideInvalidExtensions
      */
     public function testGetInvalidOperators(ExtensionInterface $extension, $expectedExceptionMessage)
@@ -29,7 +40,7 @@ class CustomExtensionTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage($expectedExceptionMessage);
 
-        $env->getUnaryOperators();
+        $env->getExpressionParsers();
     }
 
     public static function provideInvalidExtensions()

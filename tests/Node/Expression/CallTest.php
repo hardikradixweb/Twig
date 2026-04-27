@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node\Expression;
 
 /*
@@ -149,7 +158,6 @@ class CallTest extends TestCase
     private function getArguments($call, $args)
     {
         $m = new \ReflectionMethod($call, 'getArguments');
-        $m->setAccessible(true);
 
         return $m->invokeArgs($call, $args);
     }

@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\NodeVisitor;
 
 /*
@@ -70,7 +79,7 @@ class OptimizerTest extends TestCase
     public function checkForVarConfiguration(Node $node, $target)
     {
         foreach ($node as $n) {
-            if (NameExpression::class === get_class($n) && $target === $n->getAttribute('name')) {
+            if (NameExpression::class === $n::class && $target === $n->getAttribute('name')) {
                 $this->assertTrue($n->getAttribute('always_defined'));
             } else {
                 $this->checkForVarConfiguration($n, $target);

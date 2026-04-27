@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Profiler\Dumper;
 
 /*
@@ -30,7 +39,6 @@ index.twig==>embedded.twig::block(body)//1 %d %d 0
 index.twig==>embedded.twig//2 %d %d %d
 embedded.twig==>included.twig//2 %d %d %d
 index.twig==>index.twig::macro(foo)//1 %d %d %d
-EOF
-            , $dumper->dump($this->getProfile()));
+EOF, $dumper->dump($this->getProfile()));
     }
 }

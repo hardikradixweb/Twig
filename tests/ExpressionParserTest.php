@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -14,8 +23,14 @@ namespace Twig\Tests;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\PhpUnit\ExpectDeprecationTrait;
 use Twig\Attribute\FirstClassTwigCallableReady;
+use Twig\Compiler;
 use Twig\Environment;
+use Twig\Error\RuntimeError;
 use Twig\Error\SyntaxError;
+use Twig\ExpressionParser\InfixExpressionParserInterface;
+use Twig\ExpressionParser\Prefix\LiteralExpressionParser;
+use Twig\ExpressionParser\Prefix\UnaryOperatorExpressionParser;
+use Twig\ExpressionParser\PrefixExpressionParserInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\Loader\ArrayLoader;
 use Twig\Node\Expression\ArrayExpression;
@@ -24,6 +39,8 @@ use Twig\Node\Expression\ConstantExpression;
 use Twig\Node\Expression\FilterExpression;
 use Twig\Node\Expression\FunctionExpression;
 use Twig\Node\Expression\TestExpression;
+use Twig\Node\Expression\Unary\AbstractUnary;
+use Twig\Node\Expression\Unary\SpreadUnary;
 use Twig\Node\Expression\Variable\ContextVariable;
 use Twig\Node\Node;
 use Twig\Parser;
@@ -190,7 +207,7 @@ class ExpressionParserTest extends TestCase
                     new ConstantExpression(2, 1),
 
                     new ConstantExpression(2, 1),
-                    self::createContextVariable('foo', ['spread' => true]),
+                    new SpreadUnary(new ContextVariable('foo', 1), 1),
                 ], 1)],
 
             // mapping with spread operator
@@ -203,7 +220,7 @@ class ExpressionParserTest extends TestCase
                     new ConstantExpression('c', 1),
 
                     new ConstantExpression(0, 1),
-                    self::createContextVariable('otherLetters', ['spread' => true]),
+                    new SpreadUnary(new ContextVariable('otherLetters', 1), 1),
                 ], 1)],
         ];
     }
@@ -216,6 +233,15 @@ class ExpressionParserTest extends TestCase
 
         $this->expectException(SyntaxError::class);
         $parser->parse($stream);
+    }
+
+    public function testSequenceCompilationError()
+    {
+        $env = new Environment(new ArrayLoader(['index' => '{{ [1,,2] }}']), ['cache' => false, 'autoescape' => false]);
+
+        $this->expectException(SyntaxError::class);
+        $this->expectExceptionMessage('Empty array elements are only allowed in destructuring assignments');
+        $env->compileSource(new Source('{{ [1,,2] }}', 'index'));
     }
 
     /**
@@ -272,6 +298,105 @@ class ExpressionParserTest extends TestCase
                     1
                 ),
             ],
+        ];
+    }
+
+    /**
+     * @dataProvider getTestsForNullSafeOperator
+     */
+    public function testNullSafeOperator($template, $data, $expected)
+    {
+        $env = new Environment(new ArrayLoader(['template' => $template]), ['strict_variables' => true]);
+
+        $this->assertSame($expected, $env->render('template', $data));
+    }
+
+    public static function getTestsForNullSafeOperator()
+    {
+        return [
+            [
+                '{{ foo?.bar }}',
+                ['foo' => (object) ['bar' => 'baz']],
+                'baz',
+            ],
+            [
+                '{{ foo?.bar }}',
+                ['foo' => null],
+                '',
+            ],
+            [
+                '{{ foo?.bar?.baz }}',
+                ['foo' => (object) ['bar' => (object) ['baz' => 'qux']]],
+                'qux',
+            ],
+            [
+                '{{ foo?.bar?.baz }}',
+                ['foo' => (object) ['bar' => null]],
+                '',
+            ],
+            [
+                '{{ foo?.bar?.baz }}',
+                ['foo' => null],
+                '',
+            ],
+            [
+                '{{ foo?.bar?.baz ?? "qux" }}',
+                ['foo' => null],
+                'qux',
+            ],
+            [
+                '{{ foo?.bar ?? "qux" }}',
+                ['foo' => (object) ['bar' => 0]],
+                '0',
+            ],
+            [
+                '{{ foo?.bar ?? "qux" }}',
+                ['foo' => (object) ['bar' => false]],
+                '',
+            ],
+            // short-circuiting
+            [
+                '{{ foo?.bar.baz }}',
+                ['foo' => null],
+                '',
+            ],
+            [
+                '{{ foo?.bar.baz?.qux.corge }}',
+                ['foo' => null],
+                '',
+            ],
+            [
+                '{{ foo?.bar.baz?.qux.corge }}',
+                ['foo' => (object) ['bar' => (object) ['baz' => null]]],
+                '',
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider getTestForInvalidNullSafeOperatorShortCircuiting
+     */
+    public function testInvalidNullSafeOperatorShortCircuiting(string $template, array $data, string $expectedMessage)
+    {
+        $env = new Environment(new ArrayLoader(['template' => $template]), ['strict_variables' => true]);
+
+        $this->expectException(RuntimeError::class);
+        $this->expectExceptionMessage($expectedMessage);
+
+        $env->render('template', $data);
+    }
+
+    public static function getTestForInvalidNullSafeOperatorShortCircuiting()
+    {
+        yield [
+            '{{ foo?.bar.baz }}',
+            ['foo' => (object) ['bar' => null]],
+            'Impossible to access an attribute ("baz") on a null variable in "template" at line 1.',
+        ];
+        yield [
+            '{{ foo?.bar.baz?.qux.corge }}',
+            ['foo' => (object) ['bar' => (object) ['baz' => (object) ['qux' => null]]]],
+            'Impossible to access an attribute ("corge") on a null variable in "template" at line 1.',
         ];
     }
 
@@ -406,11 +531,11 @@ class ExpressionParserTest extends TestCase
     public function testCompiledCodeForDynamicTest()
     {
         $env = new Environment(new ArrayLoader(['index' => '{{ "a" is foo_foo_bar_bar }}']), ['cache' => false, 'autoescape' => false]);
-        $env->addExtension(new class() extends AbstractExtension {
+        $env->addExtension(new class extends AbstractExtension {
             public function getTests()
             {
                 return [
-                    new TwigTest('*_foo_*_bar', function ($foo, $bar, $a) {}),
+                    new TwigTest('*_foo_*_bar', static function ($foo, $bar, $a) {}),
                 ];
             }
         });
@@ -421,11 +546,11 @@ class ExpressionParserTest extends TestCase
     public function testCompiledCodeForDynamicFunction()
     {
         $env = new Environment(new ArrayLoader(['index' => '{{ foo_foo_bar_bar("a") }}']), ['cache' => false, 'autoescape' => false]);
-        $env->addExtension(new class() extends AbstractExtension {
+        $env->addExtension(new class extends AbstractExtension {
             public function getFunctions()
             {
                 return [
-                    new TwigFunction('*_foo_*_bar', function ($foo, $bar, $a) {}),
+                    new TwigFunction('*_foo_*_bar', static function ($foo, $bar, $a) {}),
                 ];
             }
         });
@@ -436,11 +561,11 @@ class ExpressionParserTest extends TestCase
     public function testCompiledCodeForDynamicFilter()
     {
         $env = new Environment(new ArrayLoader(['index' => '{{ "a"|foo_foo_bar_bar }}']), ['cache' => false, 'autoescape' => false]);
-        $env->addExtension(new class() extends AbstractExtension {
+        $env->addExtension(new class extends AbstractExtension {
             public function getFilters()
             {
                 return [
-                    new TwigFilter('*_foo_*_bar', function ($foo, $bar, $a) {}),
+                    new TwigFilter('*_foo_*_bar', static function ($foo, $bar, $a) {}),
                 ];
             }
         });
@@ -564,14 +689,145 @@ class ExpressionParserTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
-    private static function createContextVariable(string $name, array $attributes): ContextVariable
+    public function testUnaryPrecedenceChange()
     {
-        $expression = new ContextVariable($name, 1);
-        foreach ($attributes as $key => $value) {
-            $expression->setAttribute($key, $value);
+        $env = new Environment(new ArrayLoader(), ['cache' => false, 'autoescape' => false]);
+        $env->addExtension(new class extends AbstractExtension {
+            public function getExpressionParsers(): array
+            {
+                $class = new class(new ConstantExpression('foo', 1), 1) extends AbstractUnary {
+                    public function operator(Compiler $compiler): Compiler
+                    {
+                        return $compiler->raw('!');
+                    }
+                };
+
+                return [
+                    new UnaryOperatorExpressionParser($class::class, '!', 50),
+                ];
+            }
+        });
+        $parser = new Parser($env);
+
+        $parser->parse($env->tokenize(new Source('{{ !false ? "OK" : "KO" }}', 'index')));
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
+     * @dataProvider getBindingPowerTests
+     */
+    public function testBindingPower(string $expression, string $expectedExpression, mixed $expectedResult, array $context = [])
+    {
+        $env = new Environment(new ArrayLoader([
+            'expression' => $expression,
+            'expected' => $expectedExpression,
+        ]));
+
+        $this->assertSame($env->render('expected', $context), $env->render('expression', $context));
+        $this->assertEquals($expectedResult, $env->render('expression', $context));
+    }
+
+    public static function getBindingPowerTests(): iterable
+    {
+        // * / // % stronger than + -
+        foreach (['*', '/', '//', '%'] as $op1) {
+            foreach (['+', '-'] as $op2) {
+                $e = "12 $op1 6 $op2 3";
+                if ('//' === $op1) {
+                    $php = eval("return (int) floor(12 / 6) $op2 3;");
+                } else {
+                    $php = eval("return $e;");
+                }
+                yield "$op1 vs $op2" => ["{{ $e }}", "{{ (12 $op1 6) $op2 3 }}", $php];
+
+                $e = "12 $op2 6 $op1 3";
+                if ('//' === $op1) {
+                    $php = eval("return 12 $op2 (int) floor(6 / 3);");
+                } else {
+                    $php = eval("return $e;");
+                }
+                yield "$op2 vs $op1" => ["{{ $e }}", "{{ 12 $op2 (6 $op1 3) }}", $php];
+            }
         }
 
-        return $expression;
+        // + - * / // % stronger than == != <=> < > >= <= `not in` `in` `matches` `starts with` `ends with` `has some` `has every`
+        foreach (['+', '-', '*', '/', '//', '%'] as $op1) {
+            foreach (['==', '!=', '<=>', '<', '>', '>=', '<='] as $op2) {
+                $e = "12 $op1 6 $op2 3";
+                if ('//' === $op1) {
+                    $php = eval("return (int) floor(12 / 6) $op2 3;");
+                } else {
+                    $php = eval("return $e;");
+                }
+                yield "$op1 vs $op2" => ["{{ $e }}", "{{ (12 $op1 6) $op2 3 }}", $php];
+            }
+        }
+        yield '+ vs not in' => ['{{ 1 + 2 not in [3, 4] }}', '{{ (1 + 2) not in [3, 4] }}', eval('return !in_array(1 + 2, [3, 4]);')];
+        yield '+ vs in' => ['{{ 1 + 2 in [3, 4] }}', '{{ (1 + 2) in [3, 4] }}', eval('return in_array(1 + 2, [3, 4]);')];
+        yield '+ vs matches' => ['{{ 1 + 2 matches "/^3$/" }}', '{{ (1 + 2) matches "/^3$/" }}', eval("return preg_match('/^3$/', 1 + 2);")];
+
+        // ~ stronger than `starts with` `ends with`
+        yield '~ vs starts with' => ['{{ "a" ~ "b" starts with "a" }}', '{{ ("a" ~ "b") starts with "a" }}', eval("return str_starts_with('ab', 'a');")];
+        yield '~ vs ends with' => ['{{ "a" ~ "b" ends with "b" }}', '{{ ("a" ~ "b") ends with "b" }}', eval("return str_ends_with('ab', 'b');")];
+
+        // [] . stronger than anything else
+        $context = ['a' => ['b' => 1, 'c' => ['d' => 2]]];
+        yield '[] vs unary -' => ['{{ -a["b"] + 3 }}', '{{ -(a["b"]) + 3 }}', eval("\$a = ['b' => 1]; return -\$a['b'] + 3;"), $context];
+        yield '[] vs unary - (multiple levels)' => ['{{ -a["c"]["d"] }}', '{{ -((a["c"])["d"]) }}', eval("\$a = ['c' => ['d' => 2]]; return -\$a['c']['d'];"), $context];
+        yield '. vs unary -' => ['{{ -a.b }}', '{{ -(a.b) }}', eval("\$a = ['b' => 1]; return -\$a['b'];"), $context];
+        yield '. vs unary - (multiple levels)' => ['{{ -a.c.d }}', '{{ -((a.c).d) }}', eval("\$a = ['c' => ['d' => 2]]; return -\$a['c']['d'];"), $context];
+        yield '. [] vs unary -' => ['{{ -a.c["d"] }}', '{{ -((a.c)["d"]) }}', eval("\$a = ['c' => ['d' => 2]]; return -\$a['c']['d'];"), $context];
+        yield '[] . vs unary -' => ['{{ -a["c"].d }}', '{{ -((a["c"]).d) }}', eval("\$a = ['c' => ['d' => 2]]; return -\$a['c']['d'];"), $context];
+
+        // () stronger than anything else
+        yield '() vs unary -' => ['{{ -random(1, 1) + 3 }}', '{{ -(random(1, 1)) + 3 }}', eval('return -rand(1, 1) + 3;')];
+
+        // + - stronger than |
+        yield '+ vs |' => ['{{ 10 + 2|length }}', '{{ 10 + (2|length) }}', eval('return 10 + strlen(2);'), $context];
+
+        // - unary stronger than |
+        // To be uncomment in Twig 4.0
+        // yield '- vs |' => ['{{ -1|abs }}', '{{ (-1)|abs }}', eval("return abs(-1);"), $context];
+
+        // ?? stronger than ()
+        // yield '?? vs ()' => ['{{ (1 ?? "a") }}', '{{ ((1 ?? "a")) }}', eval("return 1;")];
+
+        // = stronger than anything else
+        yield '= same as literal' => ['{% do c = "a" %}{{ c }}', '{% do c = ("a") %}{{ c }}', eval("return 'a';")];
+        yield '= stronger than .' => ['{% do c = a.b %}{{ c }}', '{% do c = (a.b) %}{{ c }}', eval("\$a = ['b' => 1]; return \$a['b'];"), $context];
+        yield '= stronger than math' => ['{% do a = 1 + 3 %}{{ a }}', '{% do a = (1 + 3) %}{{ a }}', eval('$a = 1 + 3; return $a;')];
+        yield '= stronger than logical' => ['{% do a = false or true %}{{ a }}', '{% do a = (false or true) %}{{ a }}', eval('$a = false || true; return $a;')];
+        yield '= stronger than ternary' => ['{% do c = 4 ? 0 : -1 %}{{ c }}', '{% do c = (4 ? 0 : -1) %}{{ c }}', eval('return 4 ? 0 : -1;')];
+    }
+
+    public function testLiteralExpressionParserGetOperatorTokensReturnsEmptyArray()
+    {
+        $env = new Environment(new ArrayLoader());
+        $parser = $env->getExpressionParsers()->getByClass(LiteralExpressionParser::class);
+
+        $this->assertSame([], $parser->getOperatorTokens());
+        $this->assertSame('literal', $parser->getName());
+    }
+
+    public function testExpressionParserGetOperatorTokensDefaultBehavior()
+    {
+        $env = new Environment(new ArrayLoader());
+
+        foreach ($env->getExpressionParsers() as $parser) {
+            if ($parser instanceof LiteralExpressionParser) {
+                continue;
+            }
+            $expected = [$parser->getName(), ...$parser->getAliases()];
+            $this->assertSame($expected, $parser->getOperatorTokens(), \sprintf('getOperatorTokens() for %s should return name + aliases.', $parser::class));
+        }
+    }
+
+    public function testLiteralIsNotRegisteredAsOperator()
+    {
+        // Ensure "literal" is not in the operator registry
+        $env = new Environment(new ArrayLoader());
+        $this->assertNull($env->getExpressionParsers()->getByName(PrefixExpressionParserInterface::class, 'literal'));
+        $this->assertNull($env->getExpressionParsers()->getByName(InfixExpressionParserInterface::class, 'literal'));
     }
 }
 

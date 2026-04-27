@@ -56,9 +56,6 @@ Nodes
   as of Twig 3.12 as the tag is now automatically set by the Parser when
   needed.
 
-* Passing a second argument to "ExpressionParser::parseFilterExpressionRaw()"
-  is deprecated as of Twig 3.12.
-
 * The following ``Twig\Node\Node`` methods will take a string or an integer
   (instead of just a string) in Twig 4.0 for their "name" argument:
   ``getNode()``, ``hasNode()``, ``setNode()``, ``removeNode()``, and
@@ -75,7 +72,7 @@ Nodes
   deprecated.
 
 * The ``Twig\Node\Expression\NameExpression::isSimple()`` and
-  ``Twig\Node\Expression\NameExpression::isSpecial()`` methods are deprecated as 
+  ``Twig\Node\Expression\NameExpression::isSpecial()`` methods are deprecated as
   of Twig 3.11 and will be removed in Twig 4.0.
 
 * The ``filter`` node of ``Twig\Node\Expression\FilterExpression`` is
@@ -189,6 +186,37 @@ Nodes
   made ready for ``yield``; the ``use_yield`` Environment option can be turned
   on when all nodes use the ``#[\Twig\Attribute\YieldReady]`` attribute.
 
+ * The ``Twig\Node\InlinePrint`` class is deprecated as of Twig 3.16 with no
+   replacement.
+
+ * The ``Twig\Node\Expression\NullCoalesceExpression`` class is deprecated as
+   of Twig 3.17, use ``Twig\Node\Expression\Binary\NullCoalesceBinary``
+   instead.
+
+ * The ``Twig\Node\Expression\ConditionalExpression`` class is deprecated as of
+   Twig 3.17, use ``Twig\Node\Expression\Ternary\ConditionalTernary`` instead.
+
+ * The ``is_defined_test`` attribute is deprecated as of Twig 3.21, use
+   ``Twig\Node\Expression\SupportDefinedTestInterface`` instead.
+
+* Instantiating ``Twig\Node\Node`` directly is deprecated as of Twig 3.15. Use
+  ``EmptyNode`` or ``Nodes`` instead depending on the use case. The
+  ``Twig\Node\Node`` class will be abstract in Twig 4.0.
+
+* Not passing ``AbstractExpression`` arguments to the following ``Node`` class
+  constructors is deprecated as of Twig 3.15:
+
+  * ``AbstractBinary``
+  * ``AbstractUnary``
+  * ``BlockReferenceExpression``
+  * ``TestExpression``
+  * ``DefinedTest``
+  * ``FilterExpression``
+  * ``RawFilter``
+  * ``DefaultFilter``
+  * ``InlinePrint``
+  * ``NullCoalesceExpression``
+
 Node Visitors
 -------------
 
@@ -207,22 +235,61 @@ Parser
   ``getBlockStack()``, ``hasBlock()``, ``getBlock()``, ``hasMacro()``,
   ``hasTraits()``, ``getParent()``.
 
-* The ``Twig\ExpressionParser::parseHashExpression()`` method is deprecated, use
-  ``Twig\ExpressionParser::parseMappingExpression()`` instead.
-
-* The ``Twig\ExpressionParser::parseArrayExpression()`` method is deprecated, use
-  ``Twig\ExpressionParser::parseSequenceExpression()`` instead.
-
 * Passing ``null`` to ``Twig\Parser::setParent()`` is deprecated as of Twig
   3.12.
+
+* Passing a non-``AbstractExpression`` node to ``Twig\Parser::setParent()`` is
+  deprecated as of Twig 3.24; the method will require an ``AbstractExpression``
+  instance in Twig 4.0.
+
+* Passing non-``AbstractExpression`` nodes to
+  ``Twig\Node\Expression\Binary\MatchesBinary`` constructor is deprecated as of
+  Twig 3.24; the constructor will require an ``AbstractExpression`` instance in Twig
+  4.0.
+
+* The ``Twig\Parser::getExpressionParser()`` method is deprecated as of Twig
+  3.21, use ``Twig\Parser::parseExpression()`` instead.
+
+* The ``Twig\ExpressionParser`` class is deprecated as of Twig 3.21:
+
+  * ``parseExpression()``, use ``Parser::parseExpression()``
+  * ``parsePrimaryExpression()``, use ``Parser::parseExpression()``
+  * ``parseStringExpression()``, use ``Parser::parseExpression()``
+  * ``parseHashExpression()``, use ``Parser::parseExpression()``
+  * ``parseMappingExpression()``, use ``Parser::parseExpression()``
+  * ``parseArrayExpression()``, use ``Parser::parseExpression()``
+  * ``parseSequenceExpression()``, use ``Parser::parseExpression()``
+  * ``parsePostfixExpression``
+  * ``parseSubscriptExpression``
+  * ``parseFilterExpression``
+  * ``parseFilterExpressionRaw``
+  * ``parseArguments()``, use ``Twig\ExpressionParser\Infix\ArgumentsTrait::parseNamedArguments()``
+  * ``parseAssignmentExpression``, use ``AbstractTokenParser::parseAssignmentExpression``
+  * ``parseMultitargetExpression``
+  * ``parseOnlyArguments()``, use ``Twig\ExpressionParser\Infix\ArgumentsTrait::parseNamedArguments()``
+
+Token
+-----
+
+* Not passing a ``Source`` instance to ``Twig\TokenStream`` constructor is
+  deprecated as of Twig 3.16.
+
+* The ``Token::getType()`` method is deprecated as of Twig 3.19, use
+  ``Token::test()`` instead.
+
+* The ``Token::ARROW_TYPE`` constant is deprecated as of Twig 3.21, the arrow
+  ``=>`` is now an operator (``Token::OPERATOR_TYPE``).
+
+* The ``Token::PUNCTUATION_TYPE`` with values ``(``, ``[``, ``|``, ``.``,
+  ``?``, or ``?:`` are now of the ``Token::OPERATOR_TYPE`` type.
 
 Templates
 ---------
 
+* The method ``Template::loadTemplate()`` is deprecated.
 * Passing ``Twig\Template`` instances to Twig public API is deprecated (like
-  in ``Environment::resolveTemplate()``, ``Environment::load()``, and
-  ``Template::loadTemplate()``); pass instances of ``Twig\TemplateWrapper``
-  instead.
+  in ``Environment::resolveTemplate()`` and ``Environment::load()``); pass
+  instances of ``Twig\TemplateWrapper`` instead.
 
 Filters
 -------
@@ -243,12 +310,12 @@ Sandbox
   Before::
 
     {% sandbox %}
-      {% include 'user_defined.twig' %}
+      {% include 'user_defined.html.twig' %}
     {% endsandbox %}
 
   After::
 
-    {{ include('user_defined.twig', sandboxed: true) }}
+    {{ include('user_defined.html.twig', sandboxed: true) }}
 
 Testing Utilities
 -----------------
@@ -313,29 +380,17 @@ Functions/Filters/Tests
   arrow functions is deprecated as of Twig 3.15; these arguments will have a
   ``\Closure`` type hint in 4.0.
 
-Node
-----
-
-* Instantiating ``Twig\Node\Node`` directly is deprecated as of Twig 3.15. Use
-  ``EmptyNode`` or ``Nodes`` instead depending on the use case. The
-  ``Twig\Node\Node`` class will be abstract in Twig 4.0.
-
-* Not passing ``AbstractExpression`` arguments to the following ``Node`` class
-  constructors is deprecated as of Twig 3.15:
-
-  * ``AbstractBinary``
-  * ``AbstractUnary``
-  * ``BlockReferenceExpression``
-  * ``TestExpression``
-  * ``DefinedTest``
-  * ``FilterExpression``
-  * ``RawFilter``
-  * ``DefaultFilter``
-  * ``InlinePrint``
-  * ``NullCoalesceExpression``
+* Returning ``null`` from ``TwigFilter::getSafe()`` and
+  ``TwigFunction::getSafe()`` is deprecated as of Twig 3.16; return ``[]``
+  instead.
 
 Operators
 ---------
+
+* An operator precedence must be part of the [0, 512] range as of Twig 3.21.
+
+* The ``.`` operator allows accessing class constants as of Twig 3.15.
+  This can be a BC break if you don't use UPPERCASE constant names.
 
 * Using ``~`` in an expression with the ``+`` or ``-`` operators without using
   parentheses to clarify precedence triggers a deprecation as of Twig 3.15 (in
@@ -388,3 +443,55 @@ Operators
     {# or #}
 
     {{ (not 1) * 2 }} {# this is equivalent to what Twig 4.x will do without the parentheses #}
+
+* Using the ``|`` operator in an expression with ``+`` or ``-`` without explicit
+  parentheses to clarify precedence triggers a deprecation as of Twig 3.21 (in
+  Twig 4.0, ``|`` will have a higher precedence than ``+`` and ``-``).
+
+  For example, the following expression will trigger a deprecation in Twig 3.21::
+
+    {{ -1|abs }}
+
+  To avoid the deprecation, add parentheses to clarify the precedence::
+
+    {{ -(1|abs) }} {# this is equivalent to what Twig 3.x does without the parentheses #}
+
+    {# or #}
+
+    {{ (-1)|abs }} {# this is equivalent to what Twig 4.x will do without the parentheses #}
+
+* The ``Twig\Extension\ExtensionInterface::getOperators()`` method is deprecated
+  as of Twig 3.21, use ``Twig\Extension\ExtensionInterface::getExpressionParsers()``
+  instead:
+
+  Before::
+
+      public function getOperators(): array {
+          return [
+              'not' => [
+                  'precedence' => 10,
+                  'class' => NotUnary::class,
+              ],
+          ];
+      }
+
+  After::
+
+      public function getExpressionParsers(): array {
+          return [
+              new UnaryOperatorExpressionParser(NotUnary::class, 'not', 10),
+          ];
+      }
+
+* The ``Twig\OperatorPrecedenceChange`` class is deprecated as of Twig 3.21,
+  use ``Twig\ExpressionParser\PrecedenceChange`` instead.
+
+* Not implementing the ``getOperatorTokens()`` method in
+  ``Twig\ExpressionParser\ExpressionParserInterface`` implementations is
+  deprecated as of Twig 3.24. This method will be added to the interface in
+  Twig 4.0. It returns the operator token strings that the expression parser
+  handles (used by the Lexer and the parser registry). If your custom
+  expression parser extends ``Twig\ExpressionParser\AbstractExpressionParser``,
+  the default implementation returns ``[$this->getName(), ...$this->getAliases()]``.
+  Override it if your parser doesn't handle operator tokens (return ``[]``) or if
+  the operator tokens differ from the parser name.

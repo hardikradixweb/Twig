@@ -10,13 +10,25 @@
 .. code-block:: twig
 
     {# display one specific case of a backed enum #}
-    {{ enum('App\\MyEnum').SomeCase.value }}
+    {{ enum('App\\CardSuite').Clubs.value }} {# "clubs" #}
+
+    {# display one specific case of a backed enum, with a dynamic name #}
+    {% set case_name = 'Spades' %}
+    {{ enum('App\\CardSuite').(case_name).name }} {# "Spades" #}
 
     {# get all cases of an enum #}
-    {% enum('App\\MyEnum').cases() %}
+    {% for case in enum('App\\CardSuite').cases %}
+        {{ case.value }}
+    {% endfor %}
+    {# "clubs", "spades", "hearts", "diamonds" #}
+
+    {# get a specific case of an enum by value #}
+    {% set card_suite = enum('App\\CardSuite').from('hearts') %}
+    {{ card_suite.name }} {# "Hearts" #}
+    {{ card_suite.value }} {# "hearts" #}
 
     {# call any methods of the enum class #}
-    {% enum('App\\MyEnum').someMethod() %}
+    {{ enum('App\\CardSuite').someMethod() }}
 
 When using a string literal for the ``enum`` argument, it will be validated during compile time to be a valid enum name.
 

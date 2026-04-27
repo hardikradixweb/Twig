@@ -11,12 +11,13 @@ When writing Twig templates, we recommend you to follow these official coding
 standards:
 
 * Put exactly one space after the start of a delimiter (``{{``, ``{%``,
-  and ``{#``) and before the end of a delimiter (``}}``, ``%}``, and ``#}``):
+  and ``{#``) and before the end of a delimiter (``}}``, ``%}``, and ``#}``)
+  if the content is non empty:
 
   .. code-block:: twig
 
     {{ user }}
-    {# comment #}
+    {# comment #} {##}
     {% if user %}{% endif %}
 
   When using the whitespace control character, do not put any spaces between
@@ -25,7 +26,7 @@ standards:
   .. code-block:: twig
 
     {{- user -}}
-    {#- comment -#}
+    {#- comment -#} {#--#}
     {%- if user -%}{%- endif -%}
 
 * Put exactly one space before and after the following operators:
@@ -88,20 +89,33 @@ standards:
     [1, 2, 3]
     {'name': 'Fabien'}
 
+* Put exactly one space before and after ``=`` in macro argument declarations:
+
+  .. code-block:: twig
+
+    {% macro html_input(class = "input") %}
+
+* Put exactly one space after the ``:`` sign when using named arguments:
+
+  .. code-block:: twig
+
+    {{ html_input(class: "input") }}
+
 * Use snake case for all variable names (provided by the application and
-  created in templates):
+  created in templates), function/filter/test names, argument names and named
+  arguments:
 
   .. code-block:: twig
 
     {% set name = 'Fabien' %}
     {% set first_name = 'Fabien' %}
 
-* Use snake case for all function/filter/test names:
-
-  .. code-block:: twig
-
     {{ 'Fabien Potencier'|to_lower_case }}
     {{ generate_random_number() }}
+
+    {% macro html_input(class_name) %}
+
+    {{ html_input(class_name: 'pwd') }}
 
 * Indent your code inside tags (use the same indentation as the one used for
   the target language of the rendered template):

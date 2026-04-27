@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\Node;
 
 /*
@@ -42,8 +51,7 @@ public function block_foo(array \$context, array \$blocks = []): iterable
     yield "foo";
     yield from [];
 }
-EOF
-            , new Environment(new ArrayLoader()),
+EOF, new Environment(new ArrayLoader()),
         ];
 
         return $tests;

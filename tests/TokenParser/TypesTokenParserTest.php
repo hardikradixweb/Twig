@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests\TokenParser;
 
 use PHPUnit\Framework\TestCase;
@@ -62,6 +71,15 @@ class TypesTokenParserTest extends TestCase
                     'foo' => ['type' => 'foo', 'optional' => false],
                     'bar' => ['type' => 'foo', 'optional' => true],
                     'baz' => ['type' => 'baz', 'optional' => false],
+                ],
+            ],
+
+            // without {} enclosing
+            [
+                '{% types foo: "foo", bar: "bar" %}',
+                [
+                    'foo' => ['type' => 'foo', 'optional' => false],
+                    'bar' => ['type' => 'bar', 'optional' => false],
                 ],
             ],
         ];

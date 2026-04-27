@@ -1,5 +1,14 @@
 <?php
 
+/*
+ * This file is part of Twig.
+ *
+ * (c) Fabien Potencier
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Twig\Tests;
 
 /*
@@ -12,6 +21,7 @@ namespace Twig\Tests;
  */
 
 use Twig\DeprecatedCallableInfo;
+use Twig\Error\SyntaxError;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\DebugExtension;
 use Twig\Extension\SandboxExtension;
@@ -49,6 +59,53 @@ class IntegrationTest extends IntegrationTestCase
         ];
     }
 
+    protected function getUndefinedFunctionCallbacks(): array
+    {
+        return [
+            static function (string $name) {
+                if ('throwing_undefined_function' === $name) {
+                    throw new SyntaxError('This function is undefined in the tests.');
+                }
+
+                return false;
+            },
+        ];
+    }
+
+    protected function getUndefinedTestCallbacks(): array
+    {
+        return [
+            static function (string $name) {
+                if ('throwing_undefined_test' === $name) {
+                    throw new SyntaxError('This test is undefined in the tests.');
+                }
+                if ('throwing_undefined_two words_test' === $name) {
+                    throw new SyntaxError('This test is undefined in the tests.');
+                }
+
+                // Ensure this does not conflict with `divisible by` and `same as`.
+                if (\in_array($name, ['divisible', 'same'], true)) {
+                    return new TwigTest($name, static fn () => '');
+                }
+
+                return false;
+            },
+        ];
+    }
+
+    protected function getUndefinedFilterCallbacks(): array
+    {
+        return [
+            static function (string $name) {
+                if ('throwing_undefined_filter' === $name) {
+                    throw new SyntaxError('This filter is undefined in the tests.');
+                }
+
+                return false;
+            },
+        ];
+    }
+
     protected static function getFixturesDirectory(): string
     {
         return __DIR__.'/Fixtures/';
@@ -67,6 +124,8 @@ class TwigTestFoo implements \Iterator
     public $position = 0;
     public $array = [1, 2];
 
+    public static $foo = 'Foo';
+
     public function bar($param1 = null, $param2 = null)
     {
         return 'bar'.($param1 ? '_'.$param1 : '').($param2 ? '-'.$param2 : '');
@@ -75,6 +134,16 @@ class TwigTestFoo implements \Iterator
     public function getFoo()
     {
         return 'foo';
+    }
+
+    public function getEmpty()
+    {
+        return '';
+    }
+
+    public function getNull()
+    {
+        return null;
     }
 
     public function getSelf()
@@ -171,7 +240,7 @@ class TwigTestExtension extends AbstractExtension
             new TwigFilter('*_path', [$this, 'dynamic_path']),
             new TwigFilter('*_foo_*_bar', [$this, 'dynamic_foo']),
             new TwigFilter('not', [$this, 'notFilter']),
-            new TwigFilter('anon_foo', function ($name) { return '*'.$name.'*'; }),
+            new TwigFilter('anon_foo', static function ($name) { return '*'.$name.'*'; }),
         ];
     }
 
@@ -185,8 +254,8 @@ class TwigTestExtension extends AbstractExtension
             new TwigFunction('static_call_array', ['Twig\Tests\TwigTestExtension', 'staticCall']),
             new TwigFunction('*_path', [$this, 'dynamic_path']),
             new TwigFunction('*_foo_*_bar', [$this, 'dynamic_foo']),
-            new TwigFunction('anon_foo', function ($name) { return '*'.$name.'*'; }),
-            new TwigFunction('deprecated_function', function () { return 'foo'; }, ['deprecation_info' => new DeprecatedCallableInfo('foo/bar', '1.1', 'not_deprecated_function')]),
+            new TwigFunction('anon_foo', static function ($name) { return '*'.$name.'*'; }),
+            new TwigFunction('deprecated_function', static function () { return 'foo'; }, ['deprecation_info' => new DeprecatedCallableInfo('foo/bar', '1.1', 'not_deprecated_function')]),
         ];
     }
 
@@ -268,7 +337,7 @@ class TwigTestExtension extends AbstractExtension
 
     public function is_multi_word($value)
     {
-        return false !== strpos($value, ' ');
+        return str_contains($value, ' ');
     }
 
     public function __call($method, $arguments)

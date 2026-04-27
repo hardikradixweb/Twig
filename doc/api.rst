@@ -35,20 +35,23 @@ templates from a database or other resources.
 
     Notice that the second argument of the environment is an array of options.
     The ``cache`` option is a compilation cache directory, where Twig caches
-    the compiled templates to avoid the parsing phase for sub-sequent
+    the compiled templates to avoid the parsing phase for subsequent
     requests. It is very different from the cache you might want to add for
     the evaluated templates. For such a need, you can use any available PHP
     cache library.
 
+Loading Templates
+-----------------
+
+To load a template, call the ``load()`` method on a Twig environment which
+returns a ``\Twig\TemplateWrapper`` instance::
+
+    $template = $twig->load('index.html.twig');
+
 Rendering Templates
 -------------------
 
-To load a template from a Twig environment, call the ``load()`` method which
-returns a ``\Twig\TemplateWrapper`` instance::
-
-    $template = $twig->load('index.html');
-
-To render the template with some variables, call the ``render()`` method::
+To render a template with some variables, call the ``render()`` method::
 
     echo $template->render(['the' => 'variables', 'go' => 'here']);
 
@@ -56,14 +59,31 @@ To render the template with some variables, call the ``render()`` method::
 
     The ``display()`` method is a shortcut to output the rendered template.
 
-You can also load and render the template in one fell swoop::
+You can also load and render the template directly via the Environment::
 
-    echo $twig->render('index.html', ['the' => 'variables', 'go' => 'here']);
+    echo $twig->render('index.html.twig', ['the' => 'variables', 'go' => 'here']);
 
 If a template defines blocks, they can be rendered individually via the
 ``renderBlock()`` call::
 
     echo $template->renderBlock('block_name', ['the' => 'variables', 'go' => 'here']);
+
+Streaming Templates
+-------------------
+
+.. versionadded:: 3.18
+
+To stream a template, call the ``stream()`` method::
+
+    $template->stream(['the' => 'variables', 'go' => 'here']);
+
+To stream a specific template block, call the ``streamBlock()`` method::
+
+    $template->streamBlock('block_name', ['the' => 'variables', 'go' => 'here']);
+
+.. note::
+
+    The ``stream()`` and ``streamBlock()`` methods return an iterable.
 
 .. _environment_options:
 
@@ -110,8 +130,8 @@ The following options are available:
 
 * ``autoescape`` *string*
 
-  Sets the default auto-escaping strategy (``name``, ``html``, ``js``, ``css``,
-  ``url``, ``html_attr``, or a PHP callback that takes the template "filename"
+  Sets the default auto-escaping strategy (``name``, ``html``, ``js``, ``css``, ``url``,
+  ``html_attr``, ``html_attr_relaxed``, or a PHP callback that takes the template "filename"
   and returns the escaping strategy to use -- the callback cannot be a function
   name to avoid collision with built-in escaping strategies); set it to
   ``false`` to disable auto-escaping. The ``name`` escaping strategy determines
@@ -124,6 +144,17 @@ The following options are available:
   A flag that indicates which optimizations to apply
   (default to ``-1`` -- all optimizations are enabled; set it to ``0`` to
   disable).
+
+* ``use_yield`` *boolean*
+
+  ``true``: forces templates to exclusively use ``yield`` instead of ``echo``
+  (all extensions must be yield ready)
+
+  ``false`` (default): allows templates to use a mix of ``yield`` and ``echo``
+  calls to allow for a progressive migration.
+  
+  Switch to ``true`` when possible as this will be the only supported mode in
+  Twig 4.0.
 
 Loaders
 -------
@@ -165,7 +196,7 @@ methods::
     $loader->addPath($templateDir3);
     $loader->prependPath($templateDir4);
 
-The filesystem loader also supports namespaced templates. This allows to group
+The filesystem loader also supports namespaced templates. This allows you to group
 your templates under different namespaces which have their own template paths.
 
 When using the ``setPaths()``, ``addPath()``, and ``prependPath()`` methods,
@@ -177,7 +208,7 @@ methods act on the "main" namespace)::
 Namespaced templates can be accessed via the special
 ``@namespace_name/template_path`` notation::
 
-    $twig->render('@admin/index.html', []);
+    $twig->render('@admin/index.html.twig', []);
 
 ``\Twig\Loader\FilesystemLoader`` supports absolute and relative paths. Using relative
 paths is preferred as it makes the cache keys independent of the project root
@@ -198,11 +229,11 @@ the directory might be different from the one used on production servers)::
 array of strings bound to template names::
 
     $loader = new \Twig\Loader\ArrayLoader([
-        'index.html' => 'Hello {{ name }}!',
+        'index.html.twig' => 'Hello {{ name }}!',
     ]);
     $twig = new \Twig\Environment($loader);
 
-    echo $twig->render('index.html', ['name' => 'Fabien']);
+    echo $twig->render('index.html.twig', ['name' => 'Fabien']);
 
 This loader is very useful for unit testing. It can also be used for small
 projects where storing all templates in a single PHP file might make sense.
@@ -221,11 +252,11 @@ projects where storing all templates in a single PHP file might make sense.
 ``\Twig\Loader\ChainLoader`` delegates the loading of templates to other loaders::
 
     $loader1 = new \Twig\Loader\ArrayLoader([
-        'base.html' => '{% block content %}{% endblock %}',
+        'base.html.twig' => '{% block content %}{% endblock %}',
     ]);
     $loader2 = new \Twig\Loader\ArrayLoader([
-        'index.html' => '{% extends "base.html" %}{% block content %}Hello {{ name }}{% endblock %}',
-        'base.html'  => 'Will never be loaded',
+        'index.html.twig' => '{% extends "base.html.twig" %}{% block content %}Hello {{ name }}{% endblock %}',
+        'base.html.twig'  => 'Will never be loaded',
     ]);
 
     $loader = new \Twig\Loader\ChainLoader([$loader1, $loader2]);
@@ -233,8 +264,8 @@ projects where storing all templates in a single PHP file might make sense.
     $twig = new \Twig\Environment($loader);
 
 When looking for a template, Twig tries each loader in turn and returns as soon
-as the template is found. When rendering the ``index.html`` template from the
-above example, Twig will load it with ``$loader2`` but the ``base.html``
+as the template is found. When rendering the ``index.html.twig`` template from the
+above example, Twig will load it with ``$loader2`` but the ``base.html.twig``
 template will be loaded from ``$loader1``.
 
 .. note::
@@ -307,23 +338,23 @@ extension via the ``addExtension()`` method::
 
 Twig comes bundled with the following extensions:
 
-* *Twig\Extension\CoreExtension*: Defines all the core features of Twig.
+* ``\Twig\Extension\CoreExtension``: Defines all the core features of Twig.
 
-* *Twig\Extension\DebugExtension*: Defines the ``dump`` function to help debug
+* ``\Twig\Extension\DebugExtension``: Defines the ``dump`` function to help debug
   template variables.
 
-* *Twig\Extension\EscaperExtension*: Adds automatic output-escaping and the
+* ``\Twig\Extension\EscaperExtension``: Adds automatic output-escaping and the
   possibility to escape/unescape blocks of code.
 
-* *Twig\Extension\SandboxExtension*: Adds a sandbox mode to the default Twig
+* ``\Twig\Extension\SandboxExtension``: Adds a sandbox mode to the default Twig
   environment, making it safe to evaluate untrusted code.
 
-* *Twig\Extension\ProfilerExtension*: Enables the built-in Twig profiler.
+* ``\Twig\Extension\ProfilerExtension``: Enables the built-in Twig profiler.
 
-* *Twig\Extension\OptimizerExtension*: Optimizes the node tree before
+* ``\Twig\Extension\OptimizerExtension``: Optimizes the node tree before
   compilation.
 
-* *Twig\Extension\StringLoaderExtension*: Defines the ``template_from_string``
+* ``\Twig\Extension\StringLoaderExtension``: Defines the ``template_from_string``
    function to allow loading templates from string in a template.
 
 The Core, Escaper, and Optimizer extensions are registered by default.
